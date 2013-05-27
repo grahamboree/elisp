@@ -1,0 +1,6 @@
+*~
+elisp
+.DS_Store
+*.o
+*.swp
+*.swo
