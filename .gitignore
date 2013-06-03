@@ -4,3 +4,4 @@ elisp
 *.o
 *.swp
 *.swo
+gtest/lib/*
