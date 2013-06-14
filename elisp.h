@@ -1,28 +1,3 @@
-/*
-program: (sexpr)*;
-
-sexpr: list
-|  atom            {Console.WriteLine("matched sexpr");}
-;
-
-list:
-'('')'              {Console.WriteLine("matched empty list");}
-| '(' members ')'   {Console.WriteLine("matched list");}
-
-;
-
-members: (sexpr)+      {Console.WriteLine("members 1");};
-
-atom: Id               {Console.WriteLine("ID");}
-| Num              {Console.WriteLine("NUM");}
-;
-
-
-Num: ( '0' .. '9')+;
-Id: ('a' .. 'z' | 'A' .. 'Z')+;
-Whitespace : ( ' ' | '\r' '\n' | '\n' | '\t' ) {Skip();};
-*/
-
 #pragma once
 
 #include <algorithm>
@@ -43,23 +18,56 @@ using namespace std;
 #include "prelude.h"
 
 //////////////////////////////////////////////////////////////////////////
-// Utilities
-string removeComments(string s) {
+class Program {
+public:
+	Program();
+	~Program();
+	
+	// Eval the given expression in either the given context or the global context.
+	cell_t* eval(cell_t* x, Env* env = NULL);
+	string 	runCode(string inCode);
+	void 	repl(string prompt = "elisp> ");
+
+	static string 		removeComments(string s);
+	static list<string> tokenize(string s);
+	static cell_t* 		atom(string token);
+	static cell_t* 		read_from(list<string>& inTokens);
+	static cell_t* 		read(string s);
+	static string 		to_string(cell_t* exp);
+
+public:
+	Env* global_env;
+};
+
+// Program class Impl {{{1
+//////////////////////////////////////////////////////////////////////////
+Program::Program()
+: global_env(add_globals(new Env()))
+{}
+
+//////////////////////////////////////////////////////////////////////////
+Program::~Program() {
+}
+
+//////////////////////////////////////////////////////////////////////////
+string Program::removeComments(string s) {
 	// Look for semicolons.
-	string::size_type position = s.find(";");
+	string::size_type position = s.find_first_of(";");
 	while (position != string::npos) {
 		// look for newlines after the found semicolon.
 		string::size_type lineEnd = s.find_first_of("\n\r");
 		//cout << "erasing substring: " << s.substr(s.begin() + position, s.begin() + position + lineEnd)
 		s.erase(position, lineEnd - position);
-		position = s.find(";");
+		position = s.find_first_of(";");
 	}
 	return s;
 }
 
-Env* global_env = add_globals(new Env());
+////////////////////////////////////////////////////////////////////////////////
+cell_t* Program::eval(cell_t* x, Env* env) {
+	if (!env) env = global_env;
+	env->eval(x);
 
-cell_t* eval(cell_t* x, Env* env = global_env) {
 	switch(x->type) {
 		case kCellType_symbol: {
 			// Symbol lookup in the current environment.
@@ -99,7 +107,8 @@ cell_t* eval(cell_t* x, Env* env = global_env) {
 	return NULL;
 }
 
-list<string> tokenize(string s) {
+////////////////////////////////////////////////////////////////////////////////
+list<string> Program::tokenize(string s) {
 	removeComments(s);
 	
 	replaceAll(s, "(", " ( ");
@@ -114,7 +123,8 @@ list<string> tokenize(string s) {
 	return tokens;
 }
 
-cell_t* atom(string token) {
+////////////////////////////////////////////////////////////////////////////////
+cell_t* Program::atom(string token) {
 	if (token[0] == '#') {
 		string::value_type& boolid = token[1];
 		bool val = (boolid == 't' || boolid == 'T');
@@ -127,7 +137,8 @@ cell_t* atom(string token) {
 	}
 }
 
-cell_t* read_from(list<string>& inTokens) {
+////////////////////////////////////////////////////////////////////////////////
+cell_t* Program::read_from(list<string>& inTokens) {
 	trueOrDie(!inTokens.empty(), "Unexpected EOF while reading");
 
 	string token = inTokens.front();
@@ -141,12 +152,10 @@ cell_t* read_from(list<string>& inTokens) {
 		// Generate a linked list of the elements in the list.
 		cons_cell* currentPair;
 		list_cell* listatom = currentPair = new cons_cell(read_from(inTokens), NULL);
-		//size_t listLength = 1;
 		while (inTokens.front() != ")") {
 			cons_cell* newCell = new cons_cell(read_from(inTokens), NULL);
 			currentPair->cdr = newCell;
 			currentPair = newCell;
-			//listLength++;
 		}
 
 		inTokens.pop_front(); // pop off ")"
@@ -157,7 +166,8 @@ cell_t* read_from(list<string>& inTokens) {
 	return atom(token);
 }
 
-cell_t* read(string s) {
+////////////////////////////////////////////////////////////////////////////////
+cell_t* Program::read(string s) {
 	ostringstream ss;
 	ss << "(begin " << s << " )";
 
@@ -168,7 +178,8 @@ cell_t* read(string s) {
 	return read_from(tokens);
 }
 
-string to_string(cell_t* exp) {
+////////////////////////////////////////////////////////////////////////////////
+string Program::to_string(cell_t* exp) {
 	ostringstream ss;
 	if (exp)
 		ss << exp;
@@ -177,11 +188,13 @@ string to_string(cell_t* exp) {
 	return ss.str();
 }
 
-string runCode(string inCode) {
+////////////////////////////////////////////////////////////////////////////////
+string Program::runCode(string inCode) {
 	return to_string(eval(read(inCode)));
 }
 
-void repl(string prompt = "elisp> ") {
+////////////////////////////////////////////////////////////////////////////////
+void Program::repl(string prompt) {
 	while (true) {
 		cout << prompt;
 		string raw_input;
@@ -189,121 +202,4 @@ void repl(string prompt = "elisp> ") {
 		cout << runCode(raw_input) << endl << endl;
 	}
 }
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
-
-//Symbol = str
-
-//class Env(dict):
-//    "An environment: a dict of {'var':val} pairs, with an outer Env."
-//    def __init__(self, parms=(), args=(), outer=None):
-//        self.update(zip(parms,args))
-//        self.outer = outer
-//    def find(self, var):
-//        "Find the innermost Env where var appears."
-//        return self if var in self else self.outer.find(var)
-
-//isa = isinstance
-
-//################ eval
-
-//def eval(x, env=global_env):
-//    "Evaluate an expression in an environment."
-//    if isa(x, Symbol):             # variable reference
-//        return env.find(x)[x]
-//    elif not isa(x, list):         # constant literal
-//        return x
-//    elif x[0] == 'quote':          # (quote exp)
-//        (_, exp) = x
-//        return exp
-//    elif x[0] == 'if':             # (if test conseq alt)
-//        (_, test, conseq, alt) = x
-//        return eval((conseq if eval(test, env) else alt), env)
-//    elif x[0] == 'set!':           # (set! var exp)
-//        (_, var, exp) = x
-//        env.find(var)[var] = eval(exp, env)
-//    elif x[0] == 'define':         # (define var exp)
-//        (_, var, exp) = x
-//        env[var] = eval(exp, env)
-//    elif x[0] == 'lambda':         # (lambda (var*) exp)
-//        (_, vars, exp) = x
-//        return lambda *args: eval(exp, Env(vars, args, env))
-//    elif x[0] == 'begin':          # (begin exp*)
-//        for exp in x[1:]:
-//            val = eval(exp, env)
-//        return val
-//    else:                          # (proc exp*)
-//        exps = [eval(exp, env) for exp in x]
-//        proc = exps.pop(0)
-//        return proc(*exps)
-
-//def add_globals(env):
-//    "Add some Scheme standard procedures to an environment."
-//    import math, operator as op
-//    env.update(vars(math)) # sin, sqrt, ...
-//    env.update(
-//     {'+':op.add, '-':op.sub, '*':op.mul, '/':op.div, 'not':op.not_,
-//      '>':op.gt, '<':op.lt, '>=':op.ge, '<=':op.le, '=':op.eq,
-//      'equal?':op.eq, 'eq?':op.is_, 'length':len, 'cons':lambda x,y:[x]+y,
-//      'car':lambda x:x[0],'cdr':lambda x:x[1:], 'append':op.add,
-//      'list':lambda *x:list(x), 'list?': lambda x:isa(x,list),
-//      'null?':lambda x:x==[], 'symbol?':lambda x: isa(x, Symbol)})
-//    return env
-
-//global_env = add_globals(Env())
-
-
-//################ parse, read, and user interaction
-
-
-//parse = read
-
-//def tokenize(s):
-//    "Convert a string into a list of tokens."
-//    return s.replace('(',' ( ').replace(')',' ) ').split()
-
-
-//def atom(token):
-//    "Numbers become numbers; every other token is a symbol."
-//    try: return int(token)
-//    except ValueError:
-//        try: return float(token)
-//        except ValueError:
-//            return Symbol(token)
-
-//def read_from(tokens):
-//    "Read an expression from a sequence of tokens."
-//    if len(tokens) == 0:
-//        raise SyntaxError('unexpected EOF while reading')
-//    token = tokens.pop(0)
-//    if '(' == token:
-//        L = []
-//        while tokens[0] != ')':
-//            L.append(read_from(tokens))
-//        tokens.pop(0) # pop off ')'
-//        return L
-//    elif ')' == token:
-//        raise SyntaxError('unexpected )')
-//    else:
-//        return atom(token)
-
-//def read(s):
-//    "Read a Scheme expression from a string."
-//    return read_from(tokenize(s))
-
-//def to_string(exp):
-//    "Convert a Python object back into a Lisp-readable string."
-//    return '('+' '.join(map(to_string, exp))+')' if isa(exp, list) else str(exp)
-
-//def repl(prompt='lis.py> '):
-//    "A prompt-read-eval-print loop."
-//    while True:
-//        val = eval(parse(raw_input(prompt)))
-//        if val is not None: print to_string(val)
-
+// 1}}}

@@ -1,8 +1,12 @@
-#pragma once
+/*
+ *
+ */
+
+#pragma once 
 
 #include <algorithm>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <iterator>
 #include <list>
 #include <map>
@@ -18,6 +22,8 @@ using namespace std;
 
 struct Env;
 
+// Cell Types {{{1
+////////////////////////////////////////////////////////////////////////////////
 // Data types in elisp
 enum eCellType {
 	kCellType_bool,
@@ -32,6 +38,7 @@ enum eCellType {
 	kCellType_lambda
 };
 
+////////////////////////////////////////////////////////////////////////////////
 struct cell_t {
 	eCellType type;
 	
@@ -40,6 +47,7 @@ protected:
 	cell_t(eCellType inType) : type(inType) {}
 };
 
+////////////////////////////////////////////////////////////////////////////////
 // Booleans
 struct bool_cell : public cell_t {
 	bool value;
@@ -47,6 +55,7 @@ struct bool_cell : public cell_t {
 	virtual operator string() { return value ? "#t" : "#f"; }
 };
 
+////////////////////////////////////////////////////////////////////////////////
 // Number
 struct number_cell : public cell_t {
 	double value;
@@ -54,6 +63,7 @@ struct number_cell : public cell_t {
 	virtual operator string() { ostringstream ss; ss << value; return ss.str(); }
 };
 
+////////////////////////////////////////////////////////////////////////////////
 // Character
 struct char_cell : public cell_t { 
 	char value;
@@ -61,6 +71,7 @@ struct char_cell : public cell_t {
 	virtual operator string() { ostringstream ss; ss << value; return ss.str(); }
 };
 
+////////////////////////////////////////////////////////////////////////////////
 // Strings
 struct string_cell : public cell_t {
 	string value;
@@ -68,6 +79,7 @@ struct string_cell : public cell_t {
 	virtual operator string() { return value; }
 };
 
+////////////////////////////////////////////////////////////////////////////////
 // Symbols
 struct symbol_cell : public cell_t {
 	string identifier;
@@ -75,6 +87,7 @@ struct symbol_cell : public cell_t {
 	virtual operator string() { return identifier; }
 };
 
+////////////////////////////////////////////////////////////////////////////////
 // Pairs & Lists
 struct cons_cell : public cell_t {
 	cell_t* car;
@@ -102,6 +115,8 @@ struct cons_cell : public cell_t {
 		iterator(cons_cell* inPosition) :position(inPosition) {}
 	};
 };
+
+////////////////////////////////////////////////////////////////////////////////
 typedef cons_cell list_cell; // A list is a singly linked list of cons cells
 list_cell* empty_list = NULL;
 
@@ -124,6 +139,7 @@ struct vector_cell : public cell_t {
 	}
 };*/
 
+////////////////////////////////////////////////////////////////////////////////
 // Procedures
 struct proc_cell : public cell_t {
 	virtual cell_t* evalProc(list_cell* args, Env* env) = 0;
@@ -139,8 +155,10 @@ protected:
 	proc_cell() :cell_t(kCellType_procedure) {}
 };
 
+////////////////////////////////////////////////////////////////////////////////
 cell_t* eval(cell_t* x, Env* env);
 
+////////////////////////////////////////////////////////////////////////////////
 // Lambdas
 struct lambda_cell : public cell_t {
 	lambda_cell() :cell_t(kCellType_lambda) {}
@@ -185,7 +203,10 @@ struct lambda_cell : public cell_t {
 	list<symbol_cell*> 	mParameters; // list of 0 or more arguments
 	list<cell_t*> 	mBodyExpressions; // list of 1 or more body statements.
 };
+// 1}}}
 
+// Environment {{{1
+////////////////////////////////////////////////////////////////////////////////
 struct Env {
 	Env* outer;
 	map<string, cell_t*> mSymbolMap;
@@ -204,8 +225,52 @@ struct Env {
 		map<string, cell_t*>::iterator position = mSymbolMap.find(var);
 		return position->second;
 	}
-};
 
+	cell_t* eval(cell_t* x) {
+		switch(x->type) {
+		case kCellType_symbol: {
+			// Symbol lookup in the current environment.
+			string& id = static_cast<symbol_cell*>(x)->identifier;
+			return find(id)->get(id);
+		} break;
+		case kCellType_cons: {
+			// Function call
+			list_cell* listcell = static_cast<list_cell*>(x);
+
+			cell_t* callable = this->eval(listcell->car);
+
+			// If the first argument is a symbol, look it up in the current environment.
+			if (callable->type == kCellType_symbol) {
+				string callableName = static_cast<symbol_cell*>(callable)->identifier;
+
+				Env* enclosingEnvironment = find(callableName);
+				trueOrDie(enclosingEnvironment, "Undefined function: " + callableName);
+
+				callable = enclosingEnvironment->get(callableName);
+			}
+
+			if (callable->type == kCellType_procedure) { // Eval the procedure with the rest of the arguments.
+				return static_cast<proc_cell*>(callable)->evalProc(listcell, this);
+			} else if (callable->type == kCellType_lambda) { // Eval the lambda with the rest of the arguments.
+				return static_cast<lambda_cell*>(callable)->eval(listcell, this);
+			} else {
+				die("Expected procedure or lambda");
+			}
+		} break;
+		default:{
+			// Constant literal
+			return x;
+		} break;
+	}
+
+	return NULL;
+	}
+
+};
+// 1}}}
+
+// Lambda Eval {{{1
+////////////////////////////////////////////////////////////////////////////////
 cell_t* lambda_cell::eval(list_cell* args, Env* env) {
 	Env* newEnv = new Env(env);
 
@@ -223,22 +288,27 @@ cell_t* lambda_cell::eval(list_cell* args, Env* env) {
 	list<cell_t*>::iterator bodyExprIter = mBodyExpressions.begin();
 	list<cell_t*>::iterator bodyExprsEnd = mBodyExpressions.end();
 	for (; bodyExprIter != bodyExprsEnd; ++bodyExprIter)
-		returnVal = ::eval(*bodyExprIter, newEnv);
+		returnVal = newEnv->eval(*bodyExprIter);
 
 	return returnVal;
 }
+// 1}}}
 
+// Some More Helpers {{{1
+////////////////////////////////////////////////////////////////////////////////
 bool cell_to_bool(cell_t* inCell) {
 	return (inCell->type != kCellType_bool || static_cast<bool_cell*>(inCell)->value);
 }
 
+////////////////////////////////////////////////////////////////////////////////
 ostream& operator << (ostream& os, cell_t* obj) {
 	os << ((string)(*obj));
 	return cout;
 }
 
+////////////////////////////////////////////////////////////////////////////////
 ostream& operator << (ostream& os, cell_t& obj) {
 	os << (string)obj;
 	return cout;
 }
-
+// 1}}}

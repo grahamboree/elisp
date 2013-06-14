@@ -1,7 +1,9 @@
 *~
 elisp
+elispTests
 .DS_Store
 *.o
 *.swp
 *.swo
 gtest/lib/*
+gtest/lib/libgtest.a

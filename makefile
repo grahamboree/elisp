@@ -1,18 +1,21 @@
-
 GTEST_DIR = ./gtest
-INCLUDES = -I${GTEST_DIR}/include -I.
+INCLUDES = -I${GTEST_DIR}/include
+DEFINES =
 COMPILE = clang++ $(INCLUDES) -Wall -Wextra
-LINK = clang++ -o 
+EXEC_NAME = elisp
 
 ELISP_SRC = main.cpp
 GTEST_SRC = ${GTEST_DIR}/src/*.cc
 
-
 all: elisp
-	#./elisp -t
+
+test: DEFINES = -DELISP_TEST
+test: EXEC_NAME = elispTests
+test: elisp
+	./elispTests
 
 elisp: libgtest.a
-	$(COMPILE) $(ELISP_SRC) ./gtest/lib/libgtest.a -lpthread -o elisp
+	$(COMPILE) $(DEFINES) $(ELISP_SRC) ./gtest/lib/libgtest.a -lpthread -o $(EXEC_NAME)
 
 libgtest.a: ${GTEST_SRC}
 	clang++ -I${GTEST_DIR}/include -I${GTEST_DIR} -c ${GTEST_DIR}/src/gtest-all.cc
@@ -22,22 +25,7 @@ clean:
 	rm -f ./*.o
 	rm -f *~
 	rm -f elisp
+	rm -f elispTests
 	rm -f a.out
 	rm -f ./gtest/gtest-all.o
 	rm -f ./gtest/lib/libgtest.a
-
-
-#all: gtest elisp
-#	#clang++ uscheme.cpp -Wall
-#	#clang++ cppmonad.cpp -Wall
-#	elisp.cpp
-#
-#elisp: elisp.o 
-#	$(LINK) $@ $^
-#
-#%.o: %.cpp
-#	g++ -c $<
-#
-#clean:
-#	rm -f ./*.o
-#	rm -f *~

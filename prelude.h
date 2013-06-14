@@ -1,8 +1,10 @@
+/*
+ * The elisp standard prelude
+ */
 
-// The elisp standard prelude
+#pragma once
 
-
-// Helpers
+// Procedures {{{1
 struct numerical_proc : public proc_cell {
 protected:
 	double getOpValue(cell_t* inOp) {
@@ -18,7 +20,7 @@ struct add_proc : public numerical_proc {
 
 		double result = 0.0;
 		while(currentCell) {
-			result += getOpValue(eval(currentCell->car, env));
+			result += getOpValue(env->eval(currentCell->car));
 			currentCell = currentCell->cdr;
 		}
 
@@ -31,14 +33,14 @@ struct sub_proc : public numerical_proc {
 		cons_cell* currentCell = args->cdr; // skip "-"
 		verifyCell(currentCell, "-");
 
-		double result = getOpValue(eval(currentCell->car, env));
+		double result = getOpValue(env->eval(currentCell->car));
 		currentCell = currentCell->cdr;
 
 		if (!currentCell)
 			return new number_cell(-result);
 
 		while(currentCell) {
-			result -= getOpValue(eval(currentCell->car, env));
+			result -= getOpValue(env->eval(currentCell->car));
 			currentCell = currentCell->cdr;
 		}
 
@@ -53,7 +55,7 @@ struct mult_proc : public numerical_proc {
 
 		double result = 1.0;
 		while(currentCell) {
-			result *= getOpValue(eval(currentCell->car, env));
+			result *= getOpValue(env->eval(currentCell->car));
 			currentCell = currentCell->cdr;
 		}
 
@@ -66,14 +68,14 @@ struct div_proc : public numerical_proc {
 		cons_cell* currentCell = args->cdr; // skip "/"
 		verifyCell(currentCell, "/");
 
-		double value = getOpValue(eval(currentCell->car, env));
+		double value = getOpValue(env->eval(currentCell->car));
 		currentCell = currentCell->cdr;
 
 		if (!currentCell)
 			return new number_cell(1.0 / value);
 
 		while (currentCell) {
-			value /= getOpValue(eval(currentCell->car, env));
+			value /= getOpValue(env->eval(currentCell->car));
 			currentCell = currentCell->cdr;
 		}
 
@@ -86,7 +88,7 @@ struct eq_proc : public numerical_proc {
 		cons_cell* currentCell = args->cdr; // skip "="
 		verifyCell(currentCell, "=");
 
-		double value = getOpValue(eval(currentCell->car, env));
+		double value = getOpValue(env->eval(currentCell->car));
 		currentCell = currentCell->cdr;
 		verifyCell(currentCell, "=");
 
@@ -94,7 +96,7 @@ struct eq_proc : public numerical_proc {
 		bool result = true;
 		while (currentCell) {
 			//@TODO make this more accurate.
-			result = result && (value == getOpValue(eval(currentCell->car, env)));
+			result = result && (value == getOpValue(env->eval(currentCell->car)));
 			currentCell = currentCell->cdr;
 		}
 		return new bool_cell(result);
@@ -111,7 +113,7 @@ struct if_proc : public proc_cell {
 
 		trueOrDie(currentCell == empty_list, "Too many arguments specified to \"if\"");
 
-		return eval((cell_to_bool(eval(test, env)) ? conseq : alt), env);
+		return env->eval((cell_to_bool(env->eval(test)) ? conseq : alt));
 	}
 };
 
@@ -137,7 +139,7 @@ struct set_proc : public proc_cell { // (set! var exp)
 		Env* e = env->find(id);
 		trueOrDie(e, "Error, cannot set undefined variable " + id);
 
-		e->mSymbolMap[id] = eval(exp, env);
+		e->mSymbolMap[id] = env->eval(exp);
 		return empty_list;
 	}
 };
@@ -188,7 +190,7 @@ struct define_proc : public proc_cell { // (define var exp)
 
 			trueOrDie(args->cdr->cdr->cdr == empty_list, "Error, define expects only 2 arguments when defining a variable binding.");
 
-			env->mSymbolMap[varName] = eval(exp, env);
+			env->mSymbolMap[varName] = env->eval(exp);
 		} else {
 			die("Invalid first parameter passed to define.  Expected either a symbol or a list of symbols.");
 		}
@@ -248,7 +250,7 @@ struct begin_proc : public proc_cell {// (begin exp*)
 
 		cell_t* value = empty_list;
 		while (currentCell) {
-			value = eval(currentCell->car, env);
+			value = env->eval(currentCell->car);
 			currentCell = currentCell->cdr;
 		}
 		return value;
@@ -277,7 +279,7 @@ struct let_proc : public proc_cell {
 
 			trueOrDie(!currentBindingPair->cdr->cdr, "Too many arguments in binding expression.");
 
-			newEnv->mSymbolMap[var->identifier] = eval(exp, env);
+			newEnv->mSymbolMap[var->identifier] = env->eval(exp);
 
 			currentBinding = currentBinding->cdr;
 		}
@@ -285,7 +287,7 @@ struct let_proc : public proc_cell {
 
 		cell_t* returnVal = empty_list;
 		while (currentCell) {
-			returnVal = eval(currentCell->car, newEnv);
+			returnVal = newEnv->eval(currentCell->car);
 			currentCell = currentCell->cdr;
 		}
 		return returnVal;
@@ -296,7 +298,7 @@ struct display_proc : public proc_cell {
 	virtual cell_t* evalProc(list_cell* args, Env* env) {
 		cons_cell* currentArgument = args->cdr;
 		for (; currentArgument; currentArgument = currentArgument->cdr) 
-			cout << eval(currentArgument->car, env) << endl;
+			cout << env->eval(currentArgument->car) << endl;
 		return empty_list;
 	}
 };
@@ -313,7 +315,7 @@ struct greater_proc : public proc_cell {
 
 		cons_cell* currentArgument = inArgs->cdr;
 
-		cell_t* leftCell = eval(currentArgument->car, inEnv);
+		cell_t* leftCell = inEnv->eval(currentArgument->car);
 		cell_t* rightCell;
 
 		trueOrDie(leftCell->type == kCellType_number, "Error, function > accepts only numerical arguments");
@@ -322,7 +324,7 @@ struct greater_proc : public proc_cell {
 
 		bool result = true;
 		while(currentArgument) {
-			rightCell = eval(currentArgument->car, inEnv);
+			rightCell = inEnv->eval(currentArgument->car);
 			trueOrDie(rightCell->type == kCellType_number, "Error, function > accepts only numerical arguments");
 
 			double leftVal = static_cast<number_cell*>(leftCell)->value;
@@ -347,7 +349,7 @@ struct less_proc : public proc_cell {
 
 		cons_cell* currentArgument = inArgs->cdr;
 
-		cell_t* leftCell = eval(currentArgument->car, inEnv);
+		cell_t* leftCell = inEnv->eval(currentArgument->car);
 		cell_t* rightCell;
 
 		trueOrDie(leftCell->type == kCellType_number, "Error, function < accepts only numerical arguments");
@@ -356,7 +358,7 @@ struct less_proc : public proc_cell {
 
 		bool result = true;
 		while(currentArgument) {
-			rightCell = eval(currentArgument->car, inEnv);
+			rightCell = inEnv->eval(currentArgument->car);
 			trueOrDie(rightCell->type == kCellType_number, "Error, function < accepts only numerical arguments");
 
 			double leftVal = static_cast<number_cell*>(leftCell)->value;
@@ -374,7 +376,9 @@ struct less_proc : public proc_cell {
 		return new bool_cell(result);
 	}
 };
+// 1}}}
 
+// Global symbol map {{{1
 Env* add_globals(Env* env) {
 	env->mSymbolMap["+"] = new add_proc;
 	env->mSymbolMap["-"] = new sub_proc;
@@ -395,3 +399,4 @@ Env* add_globals(Env* env) {
 
 	return env;
 }
+// 1}}}

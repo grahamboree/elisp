@@ -1,28 +1,31 @@
-
-#include <gtest/gtest.h>
 #include "elisp.h"
 
-#include "test.h"
+#ifdef ELISP_TEST
+#	include <gtest/gtest.h>
+#	include "test.h"
+#endif
 
 int main(int argc, char *argv[]) {
+#ifdef ELISP_TEST
 	::testing::InitGoogleTest(&argc, argv);
 	int retval = RUN_ALL_TESTS();
+	return retval;
+#else
 
+	Program p;
 	if (argc > 1) {
-		// If -t was specified, run tests.
-
 		// File(s) were specified, so run those
 		ifstream t(argv[1]);
 
 		ostringstream ss;
 		string line;
 		while (getline(t, line))
-			ss << removeComments(line);
+			ss << Program::removeComments(line);
 
-		runCode(ss.str());
+		p.runCode(ss.str());
 	} else {
-		repl();
+		p.repl();
 	}
-
-	return retval;
+	return 0;
+#endif
 }
