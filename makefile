@@ -19,6 +19,7 @@ elisp: libgtest.a
 
 libgtest.a: ${GTEST_SRC}
 	clang++ -I${GTEST_DIR}/include -I${GTEST_DIR} -c ${GTEST_DIR}/src/gtest-all.cc
+	mkdir -p ${GTEST_DIR}/lib
 	ar -rv ${GTEST_DIR}/lib/libgtest.a gtest-all.o
 
 clean:
