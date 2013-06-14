@@ -24,9 +24,10 @@ public:
 	~Program();
 	
 	// Eval the given expression in either the given context or the global context.
-	cell_t* eval(cell_t* x, Env* env = NULL);
-	string 	runCode(string inCode);
-	void 	repl(string prompt = "elisp> ");
+	inline cell_t* 	eval(cell_t* x) {return global_env->eval(x);}
+	inline cell_t* 	eval(cell_t* x, Env* env) { if (!env) env = global_env; return env->eval(x);}
+	inline string 	runCode(string inCode) { return to_string(eval(read(inCode))); }
+	void 			repl(string prompt = "elisp> ");
 
 	static string 		removeComments(string s);
 	static list<string> tokenize(string s);
@@ -43,10 +44,13 @@ public:
 //////////////////////////////////////////////////////////////////////////
 Program::Program()
 : global_env(add_globals(new Env()))
-{}
+{
+}
 
 //////////////////////////////////////////////////////////////////////////
 Program::~Program() {
+	delete global_env;
+	global_env = NULL;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -61,50 +65,6 @@ string Program::removeComments(string s) {
 		position = s.find_first_of(";");
 	}
 	return s;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-cell_t* Program::eval(cell_t* x, Env* env) {
-	if (!env) env = global_env;
-	env->eval(x);
-
-	switch(x->type) {
-		case kCellType_symbol: {
-			// Symbol lookup in the current environment.
-			string& id = static_cast<symbol_cell*>(x)->identifier;
-			return env->find(id)->get(id);
-		} break;
-		case kCellType_cons: {
-			// Function call
-			list_cell* listcell = static_cast<list_cell*>(x);
-
-			cell_t* callable = eval(listcell->car, env);
-
-			// If the first argument is a symbol, look it up in the current environment.
-			if (callable->type == kCellType_symbol) {
-				string callableName = static_cast<symbol_cell*>(callable)->identifier;
-
-				Env* enclosingEnvironment = env->find(callableName);
-				trueOrDie(enclosingEnvironment, "Undefined function: " + callableName);
-
-				callable = enclosingEnvironment->get(callableName);
-			}
-
-			if (callable->type == kCellType_procedure) { // Eval the procedure with the rest of the arguments.
-				return static_cast<proc_cell*>(callable)->evalProc(listcell, env);
-			} else if (callable->type == kCellType_lambda) { // Eval the lambda with the rest of the arguments.
-				return static_cast<lambda_cell*>(callable)->eval(listcell, env);
-			} else {
-				die("Expected procedure or lambda");
-			}
-		} break;
-		default:{
-			// Constant literal
-			return x;
-		} break;
-	}
-
-	return NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -186,11 +146,6 @@ string Program::to_string(cell_t* exp) {
 	else
 		ss << "'" << "()";
 	return ss.str();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-string Program::runCode(string inCode) {
-	return to_string(eval(read(inCode)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
