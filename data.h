@@ -23,8 +23,8 @@ using namespace std;
 #include "Environment.h"
 
 ////////////////////////////////////////////////////////////////////////////////
-cell_t* lambda_cell::eval(list_cell* args, Env* env) {
-	Env* newEnv = new Env(env);
+cell_t* lambda_cell::eval(list_cell* args, Environment* env) {
+	Environment* newEnv = new Environment(env);
 
 	// Match the arguments to the parameters.
 	list<symbol_cell*>::const_iterator parameterIter = mParameters.begin();

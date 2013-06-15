@@ -14,7 +14,7 @@ protected:
 };
 
 struct add_proc : public numerical_proc {
-	virtual cell_t* evalProc(list_cell* args, Env* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment* env) {
 		cons_cell* currentCell = args->cdr; // skip "+"
 		verifyCell(currentCell, "+");
 
@@ -29,7 +29,7 @@ struct add_proc : public numerical_proc {
 };
 
 struct sub_proc : public numerical_proc {
-	virtual cell_t* evalProc(list_cell* args, Env* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment* env) {
 		cons_cell* currentCell = args->cdr; // skip "-"
 		verifyCell(currentCell, "-");
 
@@ -49,7 +49,7 @@ struct sub_proc : public numerical_proc {
 };
 
 struct mult_proc : public numerical_proc {
-	virtual cell_t* evalProc(list_cell* args, Env* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment* env) {
 		cons_cell* currentCell = args->cdr; // skip "*"
 		verifyCell(currentCell, "*");
 
@@ -64,7 +64,7 @@ struct mult_proc : public numerical_proc {
 };
 
 struct div_proc : public numerical_proc {
-	virtual cell_t* evalProc(list_cell* args, Env* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment* env) {
 		cons_cell* currentCell = args->cdr; // skip "/"
 		verifyCell(currentCell, "/");
 
@@ -84,7 +84,7 @@ struct div_proc : public numerical_proc {
 };
 
 struct eq_proc : public numerical_proc {
-	virtual cell_t* evalProc(list_cell* args, Env* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment* env) {
 		cons_cell* currentCell = args->cdr; // skip "="
 		verifyCell(currentCell, "=");
 
@@ -104,7 +104,7 @@ struct eq_proc : public numerical_proc {
 };
 
 struct if_proc : public proc_cell {
-	virtual cell_t* evalProc(list_cell* args, Env* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment* env) {
 		cons_cell* currentCell = args->cdr; verifyCell(currentCell, "if"); // skip "if"
 
 		cell_t* test 	= currentCell->car; currentCell = currentCell->cdr; verifyCell(currentCell, "if");
@@ -118,7 +118,7 @@ struct if_proc : public proc_cell {
 };
 
 struct quote_proc : public proc_cell { // (quote exp)
-	virtual cell_t* evalProc(list_cell* args, Env*) {
+	virtual cell_t* evalProc(list_cell* args, Environment*) {
 		verifyCell(args->cdr, "quote");
 		cell_t* value = args->cdr->car;
 		trueOrDie(!args->cdr->cdr, "Too many arguments specified to \"quote\"");
@@ -127,7 +127,7 @@ struct quote_proc : public proc_cell { // (quote exp)
 };
 
 struct set_proc : public proc_cell { // (set! var exp)
-	virtual cell_t* evalProc(list_cell* args, Env* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment* env) {
 		verifyCell(args->cdr, "set!");
 		verifyCell(args->cdr->cdr, "set!");
 
@@ -136,7 +136,7 @@ struct set_proc : public proc_cell { // (set! var exp)
 
 		trueOrDie(var->type == kCellType_symbol, "Error: set! requires a symbol as its first argument");
 		string& id = static_cast<symbol_cell*>(var)->identifier;
-		Env* e = env->find(id);
+		Environment* e = env->find(id);
 		trueOrDie(e, "Error, cannot set undefined variable " + id);
 
 		e->mSymbolMap[id] = env->eval(exp);
@@ -145,7 +145,7 @@ struct set_proc : public proc_cell { // (set! var exp)
 };
 
 struct define_proc : public proc_cell { // (define var exp)
-	virtual cell_t* evalProc(list_cell* args, Env* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment* env) {
 		// Make sure we got enough arguments.
 		verifyCell(args->cdr, "define");
 		verifyCell(args->cdr->cdr, "define");
@@ -199,7 +199,7 @@ struct define_proc : public proc_cell { // (define var exp)
 };
 
 struct lambda_proc : public proc_cell { // (lambda (var*) exp)
-	virtual cell_t* evalProc(list_cell* args, Env*) {
+	virtual cell_t* evalProc(list_cell* args, Environment*) {
 		//@TODO
 		//    elif x[0] == 'lambda':         # (lambda (var*) exp)
 		//        (_, vars, exp) = x
@@ -244,7 +244,7 @@ struct lambda_proc : public proc_cell { // (lambda (var*) exp)
 };
 
 struct begin_proc : public proc_cell {// (begin exp*)
-	virtual cell_t* evalProc(list_cell* args, Env* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment* env) {
 		cons_cell* currentCell = args->cdr; // skip "begin"
 		verifyCell(currentCell, "begin");
 
@@ -258,14 +258,14 @@ struct begin_proc : public proc_cell {// (begin exp*)
 };
 
 struct let_proc : public proc_cell {
-	virtual cell_t* evalProc(list_cell* args, Env* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment* env) {
 		cons_cell* currentCell = args->cdr; // skip "let"
 		verifyCell(currentCell, "let");
 
 		trueOrDie(currentCell->car->type == kCellType_cons, "The second argument to \"let\" must be a list of lists.");
 		list_cell* bindings = static_cast<list_cell*>(currentCell->car);
 
-		Env* newEnv = new Env(env);
+		Environment* newEnv = new Environment(env);
 
 		cons_cell* currentBinding = bindings;
 		while (currentBinding) {
@@ -295,7 +295,7 @@ struct let_proc : public proc_cell {
 };
 
 struct display_proc : public proc_cell {
-	virtual cell_t* evalProc(list_cell* args, Env* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment* env) {
 		cons_cell* currentArgument = args->cdr;
 		for (; currentArgument; currentArgument = currentArgument->cdr) 
 			cout << env->eval(currentArgument->car) << endl;
@@ -304,13 +304,13 @@ struct display_proc : public proc_cell {
 };
 
 struct exit_proc : public proc_cell {
-	virtual cell_t* evalProc(list_cell*, Env*) {
+	virtual cell_t* evalProc(list_cell*, Environment*) {
 		exit(0);
 	}
 };
 
 struct greater_proc : public proc_cell {
-	virtual cell_t* evalProc(list_cell* inArgs, Env* inEnv) {
+	virtual cell_t* evalProc(list_cell* inArgs, Environment* inEnv) {
 		trueOrDie(inArgs->cdr && inArgs->cdr->cdr, "Error, function > requires at least two arguments");
 
 		cons_cell* currentArgument = inArgs->cdr;
@@ -344,7 +344,7 @@ struct greater_proc : public proc_cell {
 };
 
 struct less_proc : public proc_cell {
-	virtual cell_t* evalProc(list_cell* inArgs, Env* inEnv) {
+	virtual cell_t* evalProc(list_cell* inArgs, Environment* inEnv) {
 		trueOrDie(inArgs->cdr && inArgs->cdr->cdr, "Error, function < requires at least two arguments");
 
 		cons_cell* currentArgument = inArgs->cdr;
@@ -379,7 +379,7 @@ struct less_proc : public proc_cell {
 // 1}}}
 
 // Global symbol map {{{1
-Env* add_globals(Env* env) {
+Environment* add_globals(Environment* env) {
 	env->mSymbolMap["+"] = new add_proc;
 	env->mSymbolMap["-"] = new sub_proc;
 	env->mSymbolMap["*"] = new mult_proc;

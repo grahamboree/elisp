@@ -25,7 +25,7 @@ public:
 	
 	// Eval the given expression in either the given context or the global context.
 	inline cell_t* 	eval(cell_t* x) {return global_env->eval(x);}
-	inline cell_t* 	eval(cell_t* x, Env* env) { if (!env) env = global_env; return env->eval(x);}
+	inline cell_t* 	eval(cell_t* x, Environment* env) { if (!env) env = global_env; return env->eval(x);}
 	inline string 	runCode(string inCode) { return to_string(eval(read(inCode))); }
 	void 			repl(string prompt = "elisp> ");
 
@@ -37,13 +37,13 @@ public:
 	static string 		to_string(cell_t* exp);
 
 public:
-	Env* global_env;
+	Environment* global_env;
 };
 
 // Program class Impl {{{1
 //////////////////////////////////////////////////////////////////////////
 Program::Program()
-: global_env(add_globals(new Env()))
+: global_env(add_globals(new Environment()))
 {
 }
 
