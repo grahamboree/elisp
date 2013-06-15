@@ -1,3 +1,7 @@
+/*
+ *
+ */
+
 #pragma once
 
 #include <algorithm>
@@ -20,6 +24,13 @@ using namespace std;
 //////////////////////////////////////////////////////////////////////////
 class Program {
 public:
+	static string 		removeComments(string s);
+	static list<string> tokenize(string s);
+	static cell_t* 		atom(string token);
+	static cell_t* 		read_from(list<string>& inTokens);
+	static cell_t* 		read(string s);
+	static string 		to_string(cell_t* exp);
+
 	Program();
 	~Program();
 	
@@ -28,14 +39,6 @@ public:
 	inline cell_t* 	eval(cell_t* x, Environment* env) { if (!env) env = global_env; return env->eval(x);}
 	inline string 	runCode(string inCode) { return to_string(eval(read(inCode))); }
 	void 			repl(string prompt = "elisp> ");
-
-	static string 		removeComments(string s);
-	static list<string> tokenize(string s);
-	static cell_t* 		atom(string token);
-	static cell_t* 		read_from(list<string>& inTokens);
-	static cell_t* 		read(string s);
-	static string 		to_string(cell_t* exp);
-
 public:
 	Environment* global_env;
 };

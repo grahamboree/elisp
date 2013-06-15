@@ -14,13 +14,13 @@ protected:
 };
 
 struct add_proc : public numerical_proc {
-	virtual cell_t* evalProc(list_cell* args, Environment* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment& env) {
 		cons_cell* currentCell = args->cdr; // skip "+"
 		verifyCell(currentCell, "+");
 
 		double result = 0.0;
 		while(currentCell) {
-			result += getOpValue(env->eval(currentCell->car));
+			result += getOpValue(env.eval(currentCell->car));
 			currentCell = currentCell->cdr;
 		}
 
@@ -29,18 +29,18 @@ struct add_proc : public numerical_proc {
 };
 
 struct sub_proc : public numerical_proc {
-	virtual cell_t* evalProc(list_cell* args, Environment* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment& env) {
 		cons_cell* currentCell = args->cdr; // skip "-"
 		verifyCell(currentCell, "-");
 
-		double result = getOpValue(env->eval(currentCell->car));
+		double result = getOpValue(env.eval(currentCell->car));
 		currentCell = currentCell->cdr;
 
 		if (!currentCell)
 			return new number_cell(-result);
 
 		while(currentCell) {
-			result -= getOpValue(env->eval(currentCell->car));
+			result -= getOpValue(env.eval(currentCell->car));
 			currentCell = currentCell->cdr;
 		}
 
@@ -49,13 +49,13 @@ struct sub_proc : public numerical_proc {
 };
 
 struct mult_proc : public numerical_proc {
-	virtual cell_t* evalProc(list_cell* args, Environment* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment& env) {
 		cons_cell* currentCell = args->cdr; // skip "*"
 		verifyCell(currentCell, "*");
 
 		double result = 1.0;
 		while(currentCell) {
-			result *= getOpValue(env->eval(currentCell->car));
+			result *= getOpValue(env.eval(currentCell->car));
 			currentCell = currentCell->cdr;
 		}
 
@@ -64,18 +64,18 @@ struct mult_proc : public numerical_proc {
 };
 
 struct div_proc : public numerical_proc {
-	virtual cell_t* evalProc(list_cell* args, Environment* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment& env) {
 		cons_cell* currentCell = args->cdr; // skip "/"
 		verifyCell(currentCell, "/");
 
-		double value = getOpValue(env->eval(currentCell->car));
+		double value = getOpValue(env.eval(currentCell->car));
 		currentCell = currentCell->cdr;
 
 		if (!currentCell)
 			return new number_cell(1.0 / value);
 
 		while (currentCell) {
-			value /= getOpValue(env->eval(currentCell->car));
+			value /= getOpValue(env.eval(currentCell->car));
 			currentCell = currentCell->cdr;
 		}
 
@@ -84,11 +84,11 @@ struct div_proc : public numerical_proc {
 };
 
 struct eq_proc : public numerical_proc {
-	virtual cell_t* evalProc(list_cell* args, Environment* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment& env) {
 		cons_cell* currentCell = args->cdr; // skip "="
 		verifyCell(currentCell, "=");
 
-		double value = getOpValue(env->eval(currentCell->car));
+		double value = getOpValue(env.eval(currentCell->car));
 		currentCell = currentCell->cdr;
 		verifyCell(currentCell, "=");
 
@@ -96,7 +96,7 @@ struct eq_proc : public numerical_proc {
 		bool result = true;
 		while (currentCell) {
 			//@TODO make this more accurate.
-			result = result && (value == getOpValue(env->eval(currentCell->car)));
+			result = result && (value == getOpValue(env.eval(currentCell->car)));
 			currentCell = currentCell->cdr;
 		}
 		return new bool_cell(result);
@@ -104,7 +104,7 @@ struct eq_proc : public numerical_proc {
 };
 
 struct if_proc : public proc_cell {
-	virtual cell_t* evalProc(list_cell* args, Environment* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment& env) {
 		cons_cell* currentCell = args->cdr; verifyCell(currentCell, "if"); // skip "if"
 
 		cell_t* test 	= currentCell->car; currentCell = currentCell->cdr; verifyCell(currentCell, "if");
@@ -113,12 +113,12 @@ struct if_proc : public proc_cell {
 
 		trueOrDie(currentCell == empty_list, "Too many arguments specified to \"if\"");
 
-		return env->eval((cell_to_bool(env->eval(test)) ? conseq : alt));
+		return env.eval((cell_to_bool(env.eval(test)) ? conseq : alt));
 	}
 };
 
 struct quote_proc : public proc_cell { // (quote exp)
-	virtual cell_t* evalProc(list_cell* args, Environment*) {
+	virtual cell_t* evalProc(list_cell* args, Environment&) {
 		verifyCell(args->cdr, "quote");
 		cell_t* value = args->cdr->car;
 		trueOrDie(!args->cdr->cdr, "Too many arguments specified to \"quote\"");
@@ -127,7 +127,7 @@ struct quote_proc : public proc_cell { // (quote exp)
 };
 
 struct set_proc : public proc_cell { // (set! var exp)
-	virtual cell_t* evalProc(list_cell* args, Environment* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment& env) {
 		verifyCell(args->cdr, "set!");
 		verifyCell(args->cdr->cdr, "set!");
 
@@ -136,16 +136,16 @@ struct set_proc : public proc_cell { // (set! var exp)
 
 		trueOrDie(var->type == kCellType_symbol, "Error: set! requires a symbol as its first argument");
 		string& id = static_cast<symbol_cell*>(var)->identifier;
-		Environment* e = env->find(id);
+		Environment* e = env.find(id);
 		trueOrDie(e, "Error, cannot set undefined variable " + id);
 
-		e->mSymbolMap[id] = env->eval(exp);
+		e->mSymbolMap[id] = env.eval(exp);
 		return empty_list;
 	}
 };
 
 struct define_proc : public proc_cell { // (define var exp)
-	virtual cell_t* evalProc(list_cell* args, Environment* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment& env) {
 		// Make sure we got enough arguments.
 		verifyCell(args->cdr, "define");
 		verifyCell(args->cdr->cdr, "define");
@@ -182,7 +182,7 @@ struct define_proc : public proc_cell { // (define var exp)
 				currentBodyExpr = currentBodyExpr->cdr;
 			}
 
-			env->mSymbolMap[functionName] = lambda;
+			env.mSymbolMap[functionName] = lambda;
 		} else if (firstArgument->type == kCellType_symbol) {
 			// Defining a variable binding.
 			string varName = static_cast<symbol_cell*>(firstArgument)->identifier;
@@ -190,7 +190,7 @@ struct define_proc : public proc_cell { // (define var exp)
 
 			trueOrDie(args->cdr->cdr->cdr == empty_list, "Error, define expects only 2 arguments when defining a variable binding.");
 
-			env->mSymbolMap[varName] = env->eval(exp);
+			env.mSymbolMap[varName] = env.eval(exp);
 		} else {
 			die("Invalid first parameter passed to define.  Expected either a symbol or a list of symbols.");
 		}
@@ -199,7 +199,7 @@ struct define_proc : public proc_cell { // (define var exp)
 };
 
 struct lambda_proc : public proc_cell { // (lambda (var*) exp)
-	virtual cell_t* evalProc(list_cell* args, Environment*) {
+	virtual cell_t* evalProc(list_cell* args, Environment&) {
 		//@TODO
 		//    elif x[0] == 'lambda':         # (lambda (var*) exp)
 		//        (_, vars, exp) = x
@@ -244,13 +244,13 @@ struct lambda_proc : public proc_cell { // (lambda (var*) exp)
 };
 
 struct begin_proc : public proc_cell {// (begin exp*)
-	virtual cell_t* evalProc(list_cell* args, Environment* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment& env) {
 		cons_cell* currentCell = args->cdr; // skip "begin"
 		verifyCell(currentCell, "begin");
 
 		cell_t* value = empty_list;
 		while (currentCell) {
-			value = env->eval(currentCell->car);
+			value = env.eval(currentCell->car);
 			currentCell = currentCell->cdr;
 		}
 		return value;
@@ -258,7 +258,7 @@ struct begin_proc : public proc_cell {// (begin exp*)
 };
 
 struct let_proc : public proc_cell {
-	virtual cell_t* evalProc(list_cell* args, Environment* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment& env) {
 		cons_cell* currentCell = args->cdr; // skip "let"
 		verifyCell(currentCell, "let");
 
@@ -279,7 +279,7 @@ struct let_proc : public proc_cell {
 
 			trueOrDie(!currentBindingPair->cdr->cdr, "Too many arguments in binding expression.");
 
-			newEnv->mSymbolMap[var->identifier] = env->eval(exp);
+			newEnv->mSymbolMap[var->identifier] = env.eval(exp);
 
 			currentBinding = currentBinding->cdr;
 		}
@@ -295,27 +295,27 @@ struct let_proc : public proc_cell {
 };
 
 struct display_proc : public proc_cell {
-	virtual cell_t* evalProc(list_cell* args, Environment* env) {
+	virtual cell_t* evalProc(list_cell* args, Environment& env) {
 		cons_cell* currentArgument = args->cdr;
 		for (; currentArgument; currentArgument = currentArgument->cdr) 
-			cout << env->eval(currentArgument->car) << endl;
+			cout << env.eval(currentArgument->car) << endl;
 		return empty_list;
 	}
 };
 
 struct exit_proc : public proc_cell {
-	virtual cell_t* evalProc(list_cell*, Environment*) {
+	virtual cell_t* evalProc(list_cell*, Environment&) {
 		exit(0);
 	}
 };
 
 struct greater_proc : public proc_cell {
-	virtual cell_t* evalProc(list_cell* inArgs, Environment* inEnv) {
+	virtual cell_t* evalProc(list_cell* inArgs, Environment& inEnv) {
 		trueOrDie(inArgs->cdr && inArgs->cdr->cdr, "Error, function > requires at least two arguments");
 
 		cons_cell* currentArgument = inArgs->cdr;
 
-		cell_t* leftCell = inEnv->eval(currentArgument->car);
+		cell_t* leftCell = inEnv.eval(currentArgument->car);
 		cell_t* rightCell;
 
 		trueOrDie(leftCell->type == kCellType_number, "Error, function > accepts only numerical arguments");
@@ -324,7 +324,7 @@ struct greater_proc : public proc_cell {
 
 		bool result = true;
 		while(currentArgument) {
-			rightCell = inEnv->eval(currentArgument->car);
+			rightCell = inEnv.eval(currentArgument->car);
 			trueOrDie(rightCell->type == kCellType_number, "Error, function > accepts only numerical arguments");
 
 			double leftVal = static_cast<number_cell*>(leftCell)->value;
@@ -344,12 +344,12 @@ struct greater_proc : public proc_cell {
 };
 
 struct less_proc : public proc_cell {
-	virtual cell_t* evalProc(list_cell* inArgs, Environment* inEnv) {
+	virtual cell_t* evalProc(list_cell* inArgs, Environment& inEnv) {
 		trueOrDie(inArgs->cdr && inArgs->cdr->cdr, "Error, function < requires at least two arguments");
 
 		cons_cell* currentArgument = inArgs->cdr;
 
-		cell_t* leftCell = inEnv->eval(currentArgument->car);
+		cell_t* leftCell = inEnv.eval(currentArgument->car);
 		cell_t* rightCell;
 
 		trueOrDie(leftCell->type == kCellType_number, "Error, function < accepts only numerical arguments");
@@ -358,7 +358,7 @@ struct less_proc : public proc_cell {
 
 		bool result = true;
 		while(currentArgument) {
-			rightCell = inEnv->eval(currentArgument->car);
+			rightCell = inEnv.eval(currentArgument->car);
 			trueOrDie(rightCell->type == kCellType_number, "Error, function < accepts only numerical arguments");
 
 			double leftVal = static_cast<number_cell*>(leftCell)->value;

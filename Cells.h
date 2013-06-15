@@ -129,7 +129,7 @@ struct vector_cell : public cell_t {
 ////////////////////////////////////////////////////////////////////////////////
 // Procedures
 struct proc_cell : public cell_t {
-	virtual cell_t* evalProc(list_cell* args, Environment* env) = 0;
+	virtual cell_t* evalProc(list_cell* args, Environment& env) = 0;
 
 	virtual operator string() {
 		return "#procedure";
@@ -147,7 +147,7 @@ protected:
 struct lambda_cell : public cell_t {
 	lambda_cell() :cell_t(kCellType_lambda) {}
 
-	virtual cell_t* eval(list_cell* args, Environment* env);
+	virtual cell_t* eval(list_cell* args, Environment& env);
 	virtual operator string() {
 		ostringstream ss;
 		ss << "(lambda (";
