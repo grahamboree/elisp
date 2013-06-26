@@ -23,8 +23,8 @@ using namespace std;
 #include "Environment.h"
 
 ////////////////////////////////////////////////////////////////////////////////
-cell_t* lambda_cell::eval(list_cell* args, Env* env) {
-	Env* newEnv = new Env(env);
+cell_t* lambda_cell::eval(list_cell* args, Environment& env) {
+	Environment newEnv(env);
 
 	// Match the arguments to the parameters.
 	list<symbol_cell*>::const_iterator parameterIter = mParameters.begin();
@@ -32,7 +32,7 @@ cell_t* lambda_cell::eval(list_cell* args, Env* env) {
 	for (; parameterIter != parametersEnd; ++parameterIter) {
 		args = args->cdr;
 		trueOrDie(args != empty_list, "insufficient arguments provided to function");
-		newEnv->mSymbolMap[(*parameterIter)->identifier] = args->car;
+		newEnv.mSymbolMap[(*parameterIter)->identifier] = args->car;
 	}
 
 	// Evaluate the body expressions with the new environment.  Return the result of the last body expression.
@@ -40,7 +40,7 @@ cell_t* lambda_cell::eval(list_cell* args, Env* env) {
 	list<cell_t*>::iterator bodyExprIter = mBodyExpressions.begin();
 	list<cell_t*>::iterator bodyExprsEnd = mBodyExpressions.end();
 	for (; bodyExprIter != bodyExprsEnd; ++bodyExprIter)
-		returnVal = newEnv->eval(*bodyExprIter);
+		returnVal = newEnv.eval(*bodyExprIter);
 
 	return returnVal;
 }

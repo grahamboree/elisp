@@ -5,22 +5,23 @@
 #pragma once
 
 ////////////////////////////////////////////////////////////////////////////////
-class Env {
+class Environment {
 public:
-	Env* outer;
+	Environment* outer;
 	map<string, cell_t*> mSymbolMap;
 
-	Env() :outer(NULL) {}
-	Env(Env* inOuter) :outer(inOuter) {}
+	Environment() :outer(NULL) {}
+	Environment(Environment& inOuter) :outer(&inOuter) {}
+	Environment(Environment* inOuter) :outer(inOuter) {}
 
-	Env* find(string& var) {
+	Environment* find(const string& var) {
 		if (mSymbolMap.find(var) != mSymbolMap.end())
 			return this;
 		trueOrDie(outer != NULL, "Undefined symbol " + var);
 		return outer->find(var);
 	}
 
-	cell_t* get(string& var) {
+	cell_t* get(const string& var) {
 		map<string, cell_t*>::iterator position = mSymbolMap.find(var);
 		return position->second;
 	}
@@ -42,16 +43,16 @@ public:
 			if (callable->type == kCellType_symbol) {
 				string callableName = static_cast<symbol_cell*>(callable)->identifier;
 
-				Env* enclosingEnvironment = find(callableName);
+				Environment* enclosingEnvironment = find(callableName);
 				trueOrDie(enclosingEnvironment, "Undefined function: " + callableName);
 
 				callable = enclosingEnvironment->get(callableName);
 			}
 
 			if (callable->type == kCellType_procedure) { // Eval the procedure with the rest of the arguments.
-				return static_cast<proc_cell*>(callable)->evalProc(listcell, this);
+				return static_cast<proc_cell*>(callable)->evalProc(listcell, *this);
 			} else if (callable->type == kCellType_lambda) { // Eval the lambda with the rest of the arguments.
-				return static_cast<lambda_cell*>(callable)->eval(listcell, this);
+				return static_cast<lambda_cell*>(callable)->eval(listcell, *this);
 			} else {
 				die("Expected procedure or lambda");
 			}
