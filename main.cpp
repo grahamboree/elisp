@@ -1,17 +1,18 @@
-#include "elisp.h"
+/*
+ *
+ */
 
 #ifdef ELISP_TEST
-#	include <gtest/gtest.h>
-#	include "test.h"
-#endif
+#	define CATCH_CONFIG_MAIN
+#	include "catch.hpp"  // The catch unit testing framework
+#endif 
 
+#include "elisp.h"    // The entire elisp library
+
+#ifndef ELISP_TEST
+// If given a file argument, runs the file,
+// otherwise it just runs the repl
 int main(int argc, char *argv[]) {
-#ifdef ELISP_TEST
-	::testing::InitGoogleTest(&argc, argv);
-	int retval = RUN_ALL_TESTS();
-	return retval;
-#else
-
 	Program p;
 	if (argc > 1) {
 		// File(s) were specified, so run those
@@ -27,5 +28,5 @@ int main(int argc, char *argv[]) {
 		p.repl();
 	}
 	return 0;
-#endif
 }
+#endif

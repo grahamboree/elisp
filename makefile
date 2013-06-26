@@ -1,32 +1,25 @@
-GTEST_DIR = ./gtest
-INCLUDES = -I${GTEST_DIR}/include
+COMPILE = clang++ -Wall -Wextra -pedantic -std=c++11 -stdlib=libc++
+INCLUDES = 
 DEFINES =
-COMPILE = clang++ $(INCLUDES) -Wall -Wextra
 EXEC_NAME = elisp
 
+HEADERS = $(shell ls *.h)
 ELISP_SRC = main.cpp
-GTEST_SRC = ${GTEST_DIR}/src/*.cc
 
 all: elisp
 
-test: DEFINES = -DELISP_TEST
-test: EXEC_NAME = elispTests
-test: elisp
+#test: DEFINES = -DELISP_TEST
+#test: EXEC_NAME = elispTests
+
+test: $(HEADERS)
+	$(COMPILE) $(INCLUDES) -DELISP_TEST $(ELISP_SRC) -o elispTests
 	./elispTests
 
-elisp: libgtest.a
-	$(COMPILE) $(DEFINES) $(ELISP_SRC) ./gtest/lib/libgtest.a -lpthread -o $(EXEC_NAME)
-
-libgtest.a: ${GTEST_SRC}
-	clang++ -I${GTEST_DIR}/include -I${GTEST_DIR} -c ${GTEST_DIR}/src/gtest-all.cc
-	mkdir -p ${GTEST_DIR}/lib
-	ar -rv ${GTEST_DIR}/lib/libgtest.a gtest-all.o
+elisp: test $(HEADERS) 
+	$(COMPILE) $(INCLUDES) $(DEFINES) $(ELISP_SRC) -o $(EXEC_NAME)
 
 clean:
-	rm -f ./*.o
+	rm -f *.o
 	rm -f *~
 	rm -f elisp
 	rm -f elispTests
-	rm -f a.out
-	rm -f ./gtest/gtest-all.o
-	rm -f ./gtest/lib/libgtest.a

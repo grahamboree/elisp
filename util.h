@@ -1,8 +1,8 @@
 #pragma once
 
-////////////////////////////////////////////////////////////////////////////////
-void die(string message = "An unknown error occured") { cout << message << endl; exit(1); }
-void trueOrDie(bool condition, string message) { if (!condition) die(message); }
+#include <cstdarg>
+#include "Cells.h"
+#include "Assert.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 void printTokenList(list<string> inTokens) {
@@ -42,3 +42,11 @@ bool isNumber(string inValue) {
 	return false;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+cons_cell* makeList(std::vector<cell_t*> list) {
+	cons_cell* result = nullptr;
+	typedef vector<cell_t*>::const_reverse_iterator cri;
+	for (cri iter = list.rbegin(); iter != list.rend(); ++iter)
+		result = new cons_cell(*iter, result);
+	return result;
+}

@@ -4,7 +4,8 @@
 
 #pragma once
 
-// Procedures {{{1
+#include "util.h"
+
 struct numerical_proc : public proc_cell {
 protected:
 	double getOpValue(cell_t* inOp) {
@@ -27,6 +28,53 @@ struct add_proc : public numerical_proc {
 		return new number_cell(result); 
 	}
 };
+
+#ifdef ELISP_TEST // {{{
+TEST_CASE("prelude/add", "Adding two numbers") {
+	Env testEnv;
+	add_proc a;
+	cell_t* result;
+	number_cell* number;
+
+	// One argument
+	cons_cell* oneArg = makeList({new symbol_cell("+"), new number_cell(1.0)});
+
+	result = a.evalProc(oneArg, &testEnv);
+	REQUIRE(result->type == kCellType_number);
+
+	number = static_cast<number_cell*>(result);
+	REQUIRE(number->value == 1);
+
+	// Two arguments
+	cons_cell* twoArgs = makeList({
+			new symbol_cell("+"),
+			new number_cell(1.0),
+			new number_cell(1.0)});
+
+	result = a.evalProc(twoArgs, &testEnv);
+	REQUIRE(result->type == kCellType_number);
+
+	number = static_cast<number_cell*>(result);
+	REQUIRE(number->value == 2);
+
+	// Seven arguments
+	cons_cell* sevenArgs = makeList({
+			new symbol_cell("+"),
+			new number_cell(1.0),
+			new number_cell(1.0),
+			new number_cell(1.0),
+			new number_cell(1.0),
+			new number_cell(1.0),
+			new number_cell(1.0),
+			new number_cell(1.0)});
+
+	result = a.evalProc(sevenArgs, &testEnv);
+	REQUIRE(result->type == kCellType_number);
+
+	number = static_cast<number_cell*>(result);
+	REQUIRE(number->value == 7);
+}
+#endif // }}}
 
 struct sub_proc : public numerical_proc {
 	virtual cell_t* evalProc(list_cell* args, Env* env) {
@@ -376,27 +424,24 @@ struct less_proc : public proc_cell {
 		return new bool_cell(result);
 	}
 };
-// 1}}}
 
-// Global symbol map {{{1
 Env* add_globals(Env* env) {
-	env->mSymbolMap["+"] = new add_proc;
-	env->mSymbolMap["-"] = new sub_proc;
-	env->mSymbolMap["*"] = new mult_proc;
-	env->mSymbolMap["/"] = new div_proc;
-	env->mSymbolMap["="] = new eq_proc;
-	env->mSymbolMap[">"] = new greater_proc;
-	env->mSymbolMap["<"] = new less_proc;
-	env->mSymbolMap["if"] = new if_proc;
-	env->mSymbolMap["begin"] = new begin_proc;
-	env->mSymbolMap["define"] = new define_proc;
-	env->mSymbolMap["lambda"] = new lambda_proc;
-	env->mSymbolMap["quote"]= new quote_proc;
-	env->mSymbolMap["set!"] = new set_proc;
-	env->mSymbolMap["let"] = new let_proc;
-	env->mSymbolMap["display"] = new display_proc;
-	env->mSymbolMap["exit"] = new exit_proc;
+	env->mSymbolMap["+"] 		= new add_proc;
+	env->mSymbolMap["-"] 		= new sub_proc;
+	env->mSymbolMap["*"] 		= new mult_proc;
+	env->mSymbolMap["/"] 		= new div_proc;
+	env->mSymbolMap["="] 		= new eq_proc;
+	env->mSymbolMap[">"] 		= new greater_proc;
+	env->mSymbolMap["<"] 		= new less_proc;
+	env->mSymbolMap["if"] 		= new if_proc;
+	env->mSymbolMap["begin"] 	= new begin_proc;
+	env->mSymbolMap["define"] 	= new define_proc;
+	env->mSymbolMap["lambda"] 	= new lambda_proc;
+	env->mSymbolMap["quote"]	= new quote_proc;
+	env->mSymbolMap["set!"] 	= new set_proc;
+	env->mSymbolMap["let"] 		= new let_proc;
+	env->mSymbolMap["display"] 	= new display_proc;
+	env->mSymbolMap["exit"] 	= new exit_proc;
 
 	return env;
 }
-// 1}}}
