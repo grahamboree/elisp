@@ -31,8 +31,7 @@ public:
 	static cell_t* 		read(string s);
 	static string 		to_string(cell_t* exp);
 
-	Program();
-	~Program();
+	Program() { add_globals(global_env); }
 	
 	// Eval the given expression in either the given context or the global context.
 	inline cell_t* 	eval(cell_t* x) { return global_env.eval(x); }
@@ -44,16 +43,6 @@ public:
 };
 
 // Program class Impl {{{1
-//////////////////////////////////////////////////////////////////////////
-Program::Program()
-{
-	add_globals(global_env);
-}
-
-//////////////////////////////////////////////////////////////////////////
-Program::~Program() {
-}
-
 //////////////////////////////////////////////////////////////////////////
 string Program::removeComments(string s) {
 	// Look for semicolons.
@@ -92,7 +81,9 @@ cell_t* Program::atom(string token) {
 		trueOrDie((val || boolid == 'f' || boolid == 'F'), "Unknown identifier " + token);
 		return new bool_cell(val);
 	} else if (isNumber(token)) {
-		return new number_cell(atof(token.c_str()));
+		number_cell* n = new number_cell(atof(token.c_str()));
+		n->valueString = token;
+		return n;
 	} else {
 		return new symbol_cell(token.c_str());
 	}

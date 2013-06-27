@@ -59,9 +59,18 @@ bool cell_to_bool(cell_t* inCell) {
 ////////////////////////////////////////////////////////////////////////////////
 // Number
 struct number_cell : public cell_t {
+	string valueString;
 	double value;
 	number_cell(double inValue) :cell_t(kCellType_number), value(inValue) {}
-	virtual operator string() { ostringstream ss; ss << value; return ss.str(); }
+	//virtual operator string() { ostringstream ss; ss << ((value == (int)value) ? (int)value : value); return ss.str(); }
+	virtual operator string() {
+		if (valueString.empty()) {
+			ostringstream ss;
+			ss << ((value == (int)value) ? (int)value : value);
+			return ss.str();
+		}
+		return valueString;
+	}
 };
 
 ////////////////////////////////////////////////////////////////////////////////

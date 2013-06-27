@@ -739,9 +739,9 @@ inline cell_t* greater_proc::evalProc(list_cell* args, Environment& env) {
 }
 
 inline cell_t* less_proc::evalProc(list_cell* args, Environment& env) {
-	trueOrDie(args->cdr && args->cdr->cdr, "Error, function < requires at least two arguments");
+	trueOrDie(args && args->cdr, "Error, function < requires at least two arguments");
 
-	cons_cell* currentArgument = args->cdr;
+	cons_cell* currentArgument = args;
 
 	cell_t* leftCell = env.eval(currentArgument->car);
 	cell_t* rightCell;
@@ -752,10 +752,10 @@ inline cell_t* less_proc::evalProc(list_cell* args, Environment& env) {
 
 	bool result = true;
 	while(currentArgument) {
+		double leftVal = static_cast<number_cell*>(leftCell)->value;
+
 		rightCell = env.eval(currentArgument->car);
 		trueOrDie(rightCell->type == kCellType_number, "Error, function < accepts only numerical arguments");
-
-		double leftVal = static_cast<number_cell*>(leftCell)->value;
 		double rightVal = static_cast<number_cell*>(rightCell)->value;
 
 		result = result && (leftVal < rightVal);

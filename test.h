@@ -1,107 +1,54 @@
+/*
+ * Unit tests for elisp
+ */
+
 #pragma once
-// Unit tests for elisp
 
-/*TEST(tokenization, simple_add) {
-	list<string> tokens = tokenize("(+ 1 2) ");
-	list<string>::iterator tokenIter = tokens.begin();
-	list<string>::iterator tokensEnd = tokens.end();
-
-	for (;tokenIter != tokensEnd; ++tokenIter) {
-		//cout << "\"" << *tokenIter << "\"" << endl;
-	}
+string result(string inCode, Program& program) {
+	return Program::to_string(program.eval(Program::read(inCode)));
 }
 
-TEST(parsingAtoms, positive_int) {
-	string code = "1";
-	//cout << "atom(\"" << code << "\")" << endl;
-	cell_t* a = atom(code);
-	//cout << to_string(a) << endl;
-	//cout << "======================" << endl;
+string result(string inCode) {
+	Program testProgram;
+	return result(inCode, testProgram); 
 }
-
-TEST(parsingAtoms, negative_int) {
-	string code = "-1";
-	//cout << "atom(\"" << code << "\")" << endl;
-	cell_t* a = atom(code);
-	//cout << to_string(a) << endl;
-	//cout << "======================" << endl;
-}
-
-TEST(parsingAtoms, negative_float) {
-	string code = "-1.4";
-	//cout << "atom(\"" << code << "\")" << endl;
-	cell_t* a = atom(code);
-	//cout << to_string(a) << endl;
-	//cout << "======================" << endl;
-}
-
-TEST(parsingAtoms, positive_float) {
-	string code = "1.4";
-	//cout << "atom(\"" << code << "\")" << endl;
-	cell_t* a = atom(code);
-	//cout << to_string(a) << endl;
-	//cout << "======================" << endl;
-}
-
-TEST(parsing, readAndToString) {
-	string code = "(+ 1 2)";
-	//cout << "read(\"" << code << "\")" << endl;
-	cell_t* a = read(code);
-	//cout << to_string(a) << endl;
-	//cout << "======================" << endl;
-	
-	code = "(+ (- -1 3) 2)";
-	//cout << "read(\"" << code << "\")" << endl;
-	a = read(code);
-	//cout << to_string(a) << endl;
-}
-
-TEST(ifelsefunc, nested) {
-	string code = "(if #f 1 (if #T 4 2))";
-	//cout << "eval(read(\"" << code << "\"))" << endl;
-	//EXPECT_EQ(0, strcmp("4", to_string(eval(read(code))).c_str()));
-	EXPECT_EQ("4", to_string(eval(read(code))));
-}*/
-
-class NorvigLispyTests : public testing::Test {
-protected:
-	void testCase(string inCode, string inExpected, Env* inEnv = global_env) {
-		EXPECT_EQ(inExpected, to_string(eval(read(inCode), inEnv)));
-	}
-};
 
 // Norvigs test cases
-TEST_F(NorvigLispyTests, quote) {
-	//testCase("(quote (testing 1 (2.0) -3.14e159))", "(testing 1 (2.0) -3.14e159)");
+TEST_CASE("NorvigLispyTests/quote", "quote") {
+	REQUIRE(result("(quote (testing 1 (2.0) -3.14e159))") == "(testing 1 (2.0) -3.14e159)");
 }
 
-TEST_F(NorvigLispyTests, add) {
-	testCase("(+ 2 2)", "4");
+TEST_CASE("NorvigLispyTests/add", "add") {
+	REQUIRE(result("(+ 2 2)") == "4");
 }
 
-TEST_F(NorvigLispyTests, add_mul) {
-    testCase("(+ (* 2 100) (* 1 10))", "210");
+TEST_CASE("NorvigLispyTests/add_mul", "add_mul") {
+    REQUIRE(result("(+ (* 2 100) (* 1 10))") == "210");
 }
 
-TEST_F(NorvigLispyTests, greater) {
-	testCase("(if (> 6 5) (+ 1 1) (+ 2 2))", "2");
+TEST_CASE("NorvigLispyTests/greater", "greater") {
+	REQUIRE(result("(if (> 6 5) (+ 1 1) (+ 2 2))") == "2");
 }
 
-TEST_F(NorvigLispyTests, less) {
-	testCase("(if (< 6 5) (+ 1 1) (+ 2 2))", "4");
+TEST_CASE("NorvigLispyTests/less", "less") {
+	REQUIRE(result("(if (< 6 5) (+ 1 1) (+ 2 2))") == "4");
 }
 
-TEST_F(NorvigLispyTests, define_var) {
-	Env* testEnv = new Env(global_env);
-	//testCase("(define x 3)", "", testEnv);
-	testCase("(define x 3)", "'()", testEnv);
-	testCase("x", "3", testEnv);
-	testCase("(+ x x)", "6", testEnv);
+TEST_CASE("NorvigLispyTests/define_var", "define_var") {
+	Program testProgram;
+	REQUIRE(result("(define x 3)", testProgram) == "'()");
+	REQUIRE(result("x", testProgram) == "3");
+	REQUIRE(result("(+ x x)", testProgram) == "6");
 }
-
 
 /*
-    (, None), ("x", 3), ("(+ x x)", 6),
+    ("(quote (testing 1 (2.0) -3.14e159))", ['testing', 1, [2.0], -3.14e159]),
+    ("(+ 2 2)", 4),
+    ("(+ (* 2 100) (* 1 10))", 210),
+    ("(if (> 6 5) (+ 1 1) (+ 2 2))", 2),
+    ("(if (< 6 5) (+ 1 1) (+ 2 2))", 4),
+    ("(define x 3)", None),
+	("x", 3), ("(+ x x)", 6),
     ("(begin (define x 1) (set! x (+ x 1)) (+ x 1))", 3),
     ("((lambda (x) (+ x x)) 5)", 10),
     ("(define twice (lambda (x) (* 2 x)))", None), ("(twice 5)", 10),
@@ -129,14 +76,9 @@ TEST_F(NorvigLispyTests, define_var) {
     ("(riff-shuffle (list 1 2 3 4 5 6 7 8))", [1, 5, 2, 6, 3, 7, 4, 8]),
     ("((repeat riff-shuffle) (list 1 2 3 4 5 6 7 8))",  [1, 3, 5, 7, 2, 4, 6, 8]),
     ("(riff-shuffle (riff-shuffle (riff-shuffle (list 1 2 3 4 5 6 7 8))))", [1,2,3,4,5,6,7,8]),
-*/
+    ]
 
-
-
-
-
-
-/*
+lispy_tests = [
     ("()", SyntaxError), ("(set! x)", SyntaxError), 
     ("(define 3 4)", SyntaxError),
     ("(quote 1 2)", SyntaxError), ("(if 1 2 3 4)", SyntaxError), 
@@ -195,4 +137,4 @@ TEST_F(NorvigLispyTests, define_var) {
      2 ; more ; comments ; ) )
      3) ; final comment""", [1,2,3]),
     ]
- */
+*/
