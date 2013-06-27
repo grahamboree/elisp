@@ -32,14 +32,12 @@ using std::vector;
 #include "internal/prelude.h"
 #include "internal/reader.h"
 
-//////////////////////////////////////////////////////////////////////////
 class Program {
 public:
 	Program() { add_globals(global_env); }
 	
 	// Eval the given expression in either the given context or the global context.
 	cell_t* eval(cell_t* x) { return global_env.eval(x); }
-	cell_t* eval(cell_t* x, Environment& env) { return env.eval(x); }
 
 	// Eval a string of code and give the result as a string.
 	string runCode(string inCode) { return to_string(eval(read(inCode))); }
