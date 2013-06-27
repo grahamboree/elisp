@@ -12,5 +12,5 @@
 	(if (= n 2) 1
 	  (+ (fib (- n 1)) (fib (- n 2))))))
 
-(display (fib 4))
+(display (fib 10))
 

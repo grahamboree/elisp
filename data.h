@@ -30,9 +30,9 @@ cell_t* lambda_cell::eval(list_cell* args, Environment& env) {
 	list<symbol_cell*>::const_iterator parameterIter = mParameters.begin();
 	list<symbol_cell*>::const_iterator parametersEnd = mParameters.end();
 	for (; parameterIter != parametersEnd; ++parameterIter) {
-		args = args->cdr;
 		trueOrDie(args != empty_list, "insufficient arguments provided to function");
-		newEnv.mSymbolMap[(*parameterIter)->identifier] = args->car;
+		newEnv.mSymbolMap[(*parameterIter)->identifier] = env.eval(args->car);
+		args = args->cdr;
 	}
 
 	// Evaluate the body expressions with the new environment.  Return the result of the last body expression.

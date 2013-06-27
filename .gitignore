@@ -7,3 +7,5 @@ elispTests
 *.swo
 gtest/lib/*
 gtest/lib/libgtest.a
+elisp.xcodeproj/xcuserdata
+elisp.xcodeproj/project.xcworkspace
