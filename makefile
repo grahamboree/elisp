@@ -1,4 +1,4 @@
-COMPILE = clang++ -Wall -Wextra -pedantic -std=c++11 -stdlib=libc++
+COMPILE = clang++ -Wall -Wextra -pedantic -std=c++11 -stdlib=libc++ -O4
 INCLUDES = 
 DEFINES =
 EXEC_NAME = elisp

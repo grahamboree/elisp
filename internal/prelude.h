@@ -7,7 +7,7 @@
 struct numerical_proc : public proc_cell {
 protected:
 	double getOpValue(cell_t* inOp) {
-		trueOrDie((inOp->type == kCellType_number), "Error, expected only number arguments");
+		trueOrDie((inOp->type == kCellType_number), "Expected only number arguments");
 		return static_cast<number_cell*>(inOp)->value;
 	}
 };
@@ -511,10 +511,10 @@ inline cell_t* set_proc::evalProc(list_cell* args, Environment& env) {
 	cell_t* var = args->car;
 	cell_t* exp = args->cdr->car;
 
-	trueOrDie(var->type == kCellType_symbol, "Error: set! requires a symbol as its first argument");
+	trueOrDie(var->type == kCellType_symbol, "set! requires a symbol as its first argument");
 	string& id = static_cast<symbol_cell*>(var)->identifier;
 	Environment* e = env.find(id);
-	trueOrDie(e, "Error, cannot set undefined variable " + id);
+	trueOrDie(e, "Cannot set undefined variable " + id);
 
 	e->mSymbolMap[id] = env.eval(exp);
 	return empty_list;
@@ -581,7 +581,7 @@ inline cell_t* define_proc::evalProc(list_cell* args, Environment& env) {
 		string varName = static_cast<symbol_cell*>(firstArgument)->identifier;
 		cell_t* exp = args->cdr->car;
 
-		trueOrDie(args->cdr->cdr == empty_list, "Error, define expects only 2 arguments when defining a variable binding.");
+		trueOrDie(args->cdr->cdr == empty_list, "define expects only 2 arguments when defining a variable binding.");
 
 		env.mSymbolMap[varName] = env.eval(exp);
 	} else {
@@ -635,7 +635,7 @@ inline cell_t* lambda_proc::evalProc(list_cell* args, Environment&) {
 	// Add the parameters.
 	currentCell = parameters;
 	while (currentCell) {
-		trueOrDie(currentCell->car->type == kCellType_symbol, "Error, expected only symbols in lambda parameter list.");
+		trueOrDie(currentCell->car->type == kCellType_symbol, "Expected only symbols in lambda parameter list.");
 		cell->mParameters.push_back(static_cast<symbol_cell*>(currentCell->car));
 		currentCell = currentCell->cdr;
 	}
@@ -705,21 +705,21 @@ inline cell_t* display_proc::evalProc(list_cell* args, Environment& env) {
 }
 
 inline cell_t* greater_proc::evalProc(list_cell* args, Environment& env) {
-	trueOrDie(args && args->cdr, "Error, function > requires at least two arguments");
+	trueOrDie(args && args->cdr, "Function > requires at least two arguments");
 
 	cons_cell* currentArgument = args;
 
 	cell_t* leftCell = env.eval(currentArgument->car);
 	cell_t* rightCell;
 
-	trueOrDie(leftCell->type == kCellType_number, "Error, function > accepts only numerical arguments");
+	trueOrDie(leftCell->type == kCellType_number, "Function > accepts only numerical arguments");
 
 	currentArgument = currentArgument->cdr;
 
 	bool result = true;
 	while(currentArgument) {
 		rightCell = env.eval(currentArgument->car);
-		trueOrDie(rightCell->type == kCellType_number, "Error, function > accepts only numerical arguments");
+		trueOrDie(rightCell->type == kCellType_number, "Function > accepts only numerical arguments");
 
 		double leftVal = static_cast<number_cell*>(leftCell)->value;
 		double rightVal = static_cast<number_cell*>(rightCell)->value;
@@ -737,14 +737,14 @@ inline cell_t* greater_proc::evalProc(list_cell* args, Environment& env) {
 }
 
 inline cell_t* less_proc::evalProc(list_cell* args, Environment& env) {
-	trueOrDie(args && args->cdr, "Error, function < requires at least two arguments");
+	trueOrDie(args && args->cdr, "Function < requires at least two arguments");
 
 	cons_cell* currentArgument = args;
 
 	cell_t* leftCell = env.eval(currentArgument->car);
 	cell_t* rightCell;
 
-	trueOrDie(leftCell->type == kCellType_number, "Error, function < accepts only numerical arguments");
+	trueOrDie(leftCell->type == kCellType_number, "Function < accepts only numerical arguments");
 
 	currentArgument = currentArgument->cdr;
 
@@ -753,7 +753,7 @@ inline cell_t* less_proc::evalProc(list_cell* args, Environment& env) {
 		double leftVal = static_cast<number_cell*>(leftCell)->value;
 
 		rightCell = env.eval(currentArgument->car);
-		trueOrDie(rightCell->type == kCellType_number, "Error, function < accepts only numerical arguments");
+		trueOrDie(rightCell->type == kCellType_number, "Function < accepts only numerical arguments");
 		double rightVal = static_cast<number_cell*>(rightCell)->value;
 
 		result = result && (leftVal < rightVal);

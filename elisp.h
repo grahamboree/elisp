@@ -51,9 +51,9 @@ public:
 				cout << prompt;
 				string raw_input;
 				getline(cin, raw_input);
-				cout << runCode(raw_input) << endl << endl;
+				cout << runCode(raw_input) << endl ;
 			} catch (exception& e) {
-				cout << e.what() << endl;
+				cout << "[ERROR]\t\t" << e.what() << endl;
 			} catch (...) {
 				cout << "An unkown error occured" << endl;
 			}

@@ -145,7 +145,7 @@ struct proc_cell : public cell_t {
 	}
 
 	void verifyCell(cons_cell* inCell, string methodName) {
-		trueOrDie(inCell, "Error, insufficient arguments provided to " + methodName);
+		trueOrDie(inCell, "Insufficient arguments provided to " + methodName + ".");
 	}
 protected:
 	proc_cell() :cell_t(kCellType_procedure) {}
