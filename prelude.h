@@ -15,89 +15,15 @@ protected:
 };
 
 struct add_proc : public numerical_proc {
-	virtual cell_t* evalProc(list_cell* args, Environment& env) {
-		cons_cell* currentCell = args->cdr; // skip "+"
-		verifyCell(currentCell, "+");
-
-		double result = 0.0;
-		while(currentCell) {
-			result += getOpValue(env.eval(currentCell->car));
-			currentCell = currentCell->cdr;
-		}
-
-		return new number_cell(result); 
-	}
+	virtual cell_t* evalProc(list_cell* args, Environment& env);
 };
 
-#ifdef ELISP_TEST // {{{
-TEST_CASE("prelude/add", "Adding two numbers") {
-	Env testEnv;
-	add_proc a;
-	cell_t* result;
-	number_cell* number;
-
-	// One argument
-	cons_cell* oneArg = makeList({new symbol_cell("+"), new number_cell(1.0)});
-
-	result = a.evalProc(oneArg, &testEnv);
-	REQUIRE(result->type == kCellType_number);
-
-	number = static_cast<number_cell*>(result);
-	REQUIRE(number->value == 1);
-
-	// Two arguments
-	cons_cell* twoArgs = makeList({
-			new symbol_cell("+"),
-			new number_cell(1.0),
-			new number_cell(1.0)});
-
-	result = a.evalProc(twoArgs, &testEnv);
-	REQUIRE(result->type == kCellType_number);
-
-	number = static_cast<number_cell*>(result);
-	REQUIRE(number->value == 2);
-
-	// Seven arguments
-	cons_cell* sevenArgs = makeList({
-			new symbol_cell("+"),
-			new number_cell(1.0),
-			new number_cell(1.0),
-			new number_cell(1.0),
-			new number_cell(1.0),
-			new number_cell(1.0),
-			new number_cell(1.0),
-			new number_cell(1.0)});
-
-	result = a.evalProc(sevenArgs, &testEnv);
-	REQUIRE(result->type == kCellType_number);
-
-	number = static_cast<number_cell*>(result);
-	REQUIRE(number->value == 7);
-}
-#endif // }}}
-
 struct sub_proc : public numerical_proc {
-	virtual cell_t* evalProc(list_cell* args, Environment& env) {
-		cons_cell* currentCell = args->cdr; // skip "-"
-		verifyCell(currentCell, "-");
-
-		double result = getOpValue(env.eval(currentCell->car));
-		currentCell = currentCell->cdr;
-
-		if (!currentCell)
-			return new number_cell(-result);
-
-		while(currentCell) {
-			result -= getOpValue(env.eval(currentCell->car));
-			currentCell = currentCell->cdr;
-		}
-
-		return new number_cell(result); 
-	}
+	virtual cell_t* evalProc(list_cell* args, Environment& env);
 };
 
 struct mult_proc : public numerical_proc {
-	virtual cell_t* evalProc(list_cell* args, Environment& env) {
+	virtual cell_t* evalProc(list_cell* args, Environment& env); {
 		cons_cell* currentCell = args->cdr; // skip "*"
 		verifyCell(currentCell, "*");
 
@@ -425,22 +351,248 @@ struct less_proc : public proc_cell {
 	}
 };
 
-Env* add_globals(Env* env) {
-	env->mSymbolMap["+"] 		= new add_proc;
-	env->mSymbolMap["-"] 		= new sub_proc;
-	env->mSymbolMap["*"] 		= new mult_proc;
-	env->mSymbolMap["/"] 		= new div_proc;
-	env->mSymbolMap["="] 		= new eq_proc;
-	env->mSymbolMap[">"] 		= new greater_proc;
-	env->mSymbolMap["<"] 		= new less_proc;
-	env->mSymbolMap["if"] 		= new if_proc;
-	env->mSymbolMap["begin"] 	= new begin_proc;
-	env->mSymbolMap["define"] 	= new define_proc;
-	env->mSymbolMap["lambda"] 	= new lambda_proc;
-	env->mSymbolMap["quote"]	= new quote_proc;
-	env->mSymbolMap["set!"] 	= new set_proc;
-	env->mSymbolMap["let"] 		= new let_proc;
-	env->mSymbolMap["display"] 	= new display_proc;
-	env->mSymbolMap["exit"] 	= new exit_proc;
-	return env;
+void add_globals(Environment& env) {
+	env.mSymbolMap["+"] 		= new add_proc;
+	env.mSymbolMap["-"] 		= new sub_proc;
+	env.mSymbolMap["*"] 		= new mult_proc;
+	env.mSymbolMap["/"] 		= new div_proc;
+	env.mSymbolMap["="] 		= new eq_proc;
+	env.mSymbolMap[">"] 		= new greater_proc;
+	env.mSymbolMap["<"] 		= new less_proc;
+	env.mSymbolMap["if"] 		= new if_proc;
+	env.mSymbolMap["begin"] 	= new begin_proc;
+	env.mSymbolMap["define"] 	= new define_proc;
+	env.mSymbolMap["lambda"] 	= new lambda_proc;
+	env.mSymbolMap["quote"]		= new quote_proc;
+	env.mSymbolMap["set!"] 		= new set_proc;
+	env.mSymbolMap["let"] 		= new let_proc;
+	env.mSymbolMap["display"] 	= new display_proc;
+	env.mSymbolMap["exit"] 		= new exit_proc;
 }
+
+cell_t* add_proc::evalProc(list_cell* args, Environment& env) {
+	verifyCell(args, "+");
+	
+	cons_cell* currentCell = args;
+	double result = 0.0;
+	while(currentCell) {
+		result += getOpValue(env.eval(currentCell->car));
+		currentCell = currentCell->cdr;
+	}
+	
+	return new number_cell(result);
+}
+
+#ifdef ELISP_TEST // {{{
+TEST_CASE("prelude/add", "+") {
+	Environment testEnv;
+	add_globals(testEnv);
+	add_proc a;
+	cell_t* result;
+	number_cell* number;
+	
+	// One argument
+	cons_cell* oneArg = makeList({new number_cell(1.0)});
+	
+	result = a.evalProc(oneArg, testEnv);
+	REQUIRE(result->type == kCellType_number);
+	
+	number = static_cast<number_cell*>(result);
+	REQUIRE(number->value == 1);
+	
+	// Two arguments
+	cons_cell* twoArgs = makeList({
+		new number_cell(1.0),
+		new number_cell(1.0)});
+	
+	result = a.evalProc(twoArgs, testEnv);
+	REQUIRE(result->type == kCellType_number);
+	
+	number = static_cast<number_cell*>(result);
+	REQUIRE(number->value == 2);
+	
+	// Seven arguments
+	cons_cell* sevenArgs = makeList({
+		new number_cell(1.0),
+		new number_cell(1.0),
+		new number_cell(1.0),
+		new number_cell(1.0),
+		new number_cell(1.0),
+		new number_cell(1.0),
+		new number_cell(1.0)});
+	
+	result = a.evalProc(sevenArgs, testEnv);
+	REQUIRE(result->type == kCellType_number);
+	
+	number = static_cast<number_cell*>(result);
+	REQUIRE(number->value == 7);
+	
+	// Nested
+	cons_cell* nested = makeList({
+		new number_cell(1.0),
+		makeList({
+			new symbol_cell("+"),
+			new number_cell(1.0),
+			new number_cell(1.0)})});
+	
+	result = a.evalProc(nested, testEnv);
+	REQUIRE(result->type == kCellType_number);
+	
+	number = static_cast<number_cell*>(result);
+	REQUIRE(number->value == 3);
+}
+#endif // }}}
+
+cell_t* sub_proc::evalProc(list_cell* args, Environment& env) {
+	verifyCell(args, "-");
+
+	cons_cell* currentCell = args;
+
+	double result = getOpValue(env.eval(currentCell->car));
+	currentCell = currentCell->cdr;
+
+	if (!currentCell)
+		return new number_cell(-result);
+
+	while(currentCell) {
+		result -= getOpValue(env.eval(currentCell->car));
+		currentCell = currentCell->cdr;
+	}
+
+	return new number_cell(result); 
+}
+
+#ifdef ELISP_TEST // {{{
+TEST_CASE("prelude/sub", "-") {
+	Environment testEnv;
+	add_globals(testEnv);
+	sub_proc sub;
+	cell_t* result;
+	number_cell* number;
+	
+	// One argument
+	cons_cell* oneArg = makeList({new number_cell(1.0)});
+	
+	result = sub.evalProc(oneArg, testEnv);
+	REQUIRE(result->type == kCellType_number);
+	
+	number = static_cast<number_cell*>(result);
+	REQUIRE(number->value == -1);
+	
+	// Two arguments
+	cons_cell* twoArgs = makeList({
+		new number_cell(1.0),
+		new number_cell(1.0)});
+	
+	result = sub.evalProc(twoArgs, testEnv);
+	REQUIRE(result->type == kCellType_number);
+	
+	number = static_cast<number_cell*>(result);
+	REQUIRE(number->value == 0);
+	
+	// Seven arguments
+	cons_cell* sevenArgs = makeList({
+		new number_cell(10.0),
+		new number_cell(1.0),
+		new number_cell(1.0),
+		new number_cell(1.0),
+		new number_cell(1.0),
+		new number_cell(1.0),
+		new number_cell(1.0)});
+	
+	result = sub.evalProc(sevenArgs, testEnv);
+	REQUIRE(result->type == kCellType_number);
+	
+	number = static_cast<number_cell*>(result);
+	REQUIRE(number->value == 4);
+	
+	// Nested
+	cons_cell* nested = makeList({
+		new number_cell(5.0),
+		makeList({
+			new symbol_cell("-"),
+			new number_cell(2.0),
+			new number_cell(1.0)}),
+		new number_cell(1.0)});
+	
+	result = sub.evalProc(nested, testEnv);
+	REQUIRE(result->type == kCellType_number);
+	
+	number = static_cast<number_cell*>(result);
+	REQUIRE(number->value == 3);
+}
+#endif // }}}
+
+cell_t* mult_proc::evalProc(list_cell* args, Environment& env) {
+	verifyCell(args, "*");
+
+	double result = 1.0;
+	cons_cell* currentCell = args;
+	while(currentCell) {
+		result *= getOpValue(env.eval(currentCell->car));
+		currentCell = currentCell->cdr;
+	}
+
+	return new number_cell(result); 
+}
+
+#ifdef ELISP_TEST // {{{
+TEST_CASE("prelude/mult", "*") {
+	Environment testEnv;
+	add_globals(testEnv);
+	sub_proc sub;
+	cell_t* result;
+	number_cell* number;
+	
+	// One argument
+	cons_cell* oneArg = makeList({new number_cell(1.0)});
+	
+	result = sub.evalProc(oneArg, testEnv);
+	REQUIRE(result->type == kCellType_number);
+	
+	number = static_cast<number_cell*>(result);
+	REQUIRE(number->value == -1);
+	
+	// Two arguments
+	cons_cell* twoArgs = makeList({
+		new number_cell(1.0),
+		new number_cell(1.0)});
+	
+	result = sub.evalProc(twoArgs, testEnv);
+	REQUIRE(result->type == kCellType_number);
+	
+	number = static_cast<number_cell*>(result);
+	REQUIRE(number->value == 0);
+	
+	// Seven arguments
+	cons_cell* sevenArgs = makeList({
+		new number_cell(10.0),
+		new number_cell(1.0),
+		new number_cell(1.0),
+		new number_cell(1.0),
+		new number_cell(1.0),
+		new number_cell(1.0),
+		new number_cell(1.0)});
+	
+	result = sub.evalProc(sevenArgs, testEnv);
+	REQUIRE(result->type == kCellType_number);
+	
+	number = static_cast<number_cell*>(result);
+	REQUIRE(number->value == 4);
+	
+	// Nested
+	cons_cell* nested = makeList({
+		new number_cell(5.0),
+		makeList({
+			new symbol_cell("-"),
+			new number_cell(2.0),
+			new number_cell(1.0)}),
+		new number_cell(1.0)});
+	
+	result = sub.evalProc(nested, testEnv);
+	REQUIRE(result->type == kCellType_number);
+	
+	number = static_cast<number_cell*>(result);
+	REQUIRE(number->value == 3);
+}
+#endif // }}}

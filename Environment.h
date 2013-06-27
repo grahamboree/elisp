@@ -27,16 +27,13 @@ public:
 	}
 
 	cell_t* eval(cell_t* x) {
-		switch(x->type) {
-		case kCellType_symbol: {
+		if (x->type == kCellType_symbol) {
 			// Symbol lookup in the current environment.
 			string& id = static_cast<symbol_cell*>(x)->identifier;
 			return find(id)->get(id);
-		} break;
-		case kCellType_cons: {
+		} else if (x->type == kCellType_cons) {
 			// Function call
-			list_cell* listcell = static_cast<list_cell*>(x);
-
+			cons_cell* listcell = static_cast<cons_cell*>(x);
 			cell_t* callable = this->eval(listcell->car);
 
 			// If the first argument is a symbol, look it up in the current environment.
@@ -49,21 +46,15 @@ public:
 				callable = enclosingEnvironment->get(callableName);
 			}
 
-			if (callable->type == kCellType_procedure) { // Eval the procedure with the rest of the arguments.
-				return static_cast<proc_cell*>(callable)->evalProc(listcell, *this);
-			} else if (callable->type == kCellType_lambda) { // Eval the lambda with the rest of the arguments.
-				return static_cast<lambda_cell*>(callable)->eval(listcell, *this);
-			} else {
-				die("Expected procedure or lambda");
+			if (callable->type == kCellType_procedure) { 
+				// Eval the procedure with the rest of the arguments.
+				return static_cast<proc_cell*>(callable)->evalProc(listcell->cdr, *this);
+			} else if (callable->type == kCellType_lambda) { 
+				// Eval the lambda with the rest of the arguments.
+				return static_cast<lambda_cell*>(callable)->eval(listcell->cdr, *this);
 			}
-		} break;
-		default:{
-			// Constant literal
-			return x;
-		} break;
+			die("Expected procedure or lambda as first element in an sexpression.");
+		}
+		return x;
 	}
-
-	return NULL;
-	}
-
 };
