@@ -19,7 +19,7 @@ string removeComments(string s){
 }
 
 vector<string> tokenize(string s) {
-	removeComments(s);
+	s = removeComments(s);
 	
 	replaceAll(s, "(", " ( ");
 	replaceAll(s, ")", " ) ");
@@ -60,12 +60,12 @@ cell_t* read_from(vector<string>& inTokens) {
 		}
 
 		// Generate a linked list of the elements in the list.
-		cons_cell* currentPair;
-		list_cell* listatom = currentPair = new cons_cell(read_from(inTokens), NULL);
+		cons_cell* currentPair = new cons_cell(read_from(inTokens), NULL);
+		trueOrDie(currentPair->car != NULL, "Missing procedure.  Original code was most likely (), which is illegal.");
+		list_cell* listatom = currentPair;
 		while (inTokens.back() != ")") {
-			cons_cell* newCell = new cons_cell(read_from(inTokens), NULL);
-			currentPair->cdr = newCell;
-			currentPair = newCell;
+			currentPair->cdr = new cons_cell(read_from(inTokens), NULL);
+			currentPair = currentPair->cdr;
 		}
 
 		inTokens.pop_back();

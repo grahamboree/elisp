@@ -5,9 +5,9 @@
 #pragma once 
 
 ////////////////////////////////////////////////////////////////////////////////
-void die(string message = "An unknown error occured")
+void die(string message)
 {
-	throw runtime_error(message);
+	throw logic_error(message);
 }
 void trueOrDie(bool condition, string message)
 {

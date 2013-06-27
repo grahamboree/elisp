@@ -27,6 +27,8 @@ public:
 	}
 
 	cell_t* eval(cell_t* x) {
+		trueOrDie(x != NULL, "Missing procedure.  Original code was most likely (), which is illegal.");
+		
 		if (x->type == kCellType_symbol) {
 			// Symbol lookup in the current environment.
 			string& id = static_cast<symbol_cell*>(x)->identifier;

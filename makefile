@@ -1,4 +1,4 @@
-COMPILE = clang++ -Wall -Wextra -pedantic -std=c++11 -stdlib=libc++ -O4
+COMPILE = clang++ -Wall -Wextra -pedantic -std=c++11 -stdlib=libc++
 INCLUDES = 
 DEFINES =
 EXEC_NAME = elisp
@@ -8,19 +8,20 @@ ELISP_SRC = main.cpp
 
 all: elisp
 
-#test: DEFINES = -DELISP_TEST
-#test: EXEC_NAME = elispTests
-
-test: $(HEADERS)
-	$(COMPILE) $(INCLUDES) -DELISP_TEST $(ELISP_SRC) -o elispTests
+test: $(HEADERS) elisp.pch
+	$(COMPILE) $(INCLUDES) -O0 -DCATCH_CONFIG_MAIN -DELISP_TEST -include catch.hpp $(ELISP_SRC) -o elispTests
 	./elispTests
 
 #elisp: test $(HEADERS) 
 elisp: $(HEADERS) 
-	$(COMPILE) $(INCLUDES) $(DEFINES) $(ELISP_SRC) -o $(EXEC_NAME)
+	$(COMPILE) $(INCLUDES) $(DEFINES) $(ELISP_SRC) -O4 -o $(EXEC_NAME)
+
+elisp.pch: catch.hpp
+	$(COMPILE) -DCATCH_CONFIG_MAIN -x c++-header catch.hpp -o elisp.pch
 
 clean:
 	rm -f *.o
 	rm -f *~
 	rm -f elisp
 	rm -f elispTests
+	rm -f elisp.pch

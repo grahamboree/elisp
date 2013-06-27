@@ -19,6 +19,7 @@ using std::endl;
 using std::exception;
 using std::istream_iterator;
 using std::istringstream;
+using std::logic_error;
 using std::map;
 using std::ostream;
 using std::ostringstream;
@@ -50,12 +51,21 @@ public:
 			try {
 				cout << prompt;
 				string raw_input;
-				getline(cin, raw_input);
-				cout << runCode(raw_input) << endl ;
-			} catch (exception& e) {
-				cout << "[ERROR]\t\t" << e.what() << endl;
+				if (!std::getline(cin, raw_input)) {
+					cout << endl << endl;
+					break;
+				}
+				if (raw_input.empty() or raw_input.find_first_not_of(" \t") == string::npos)
+					continue;
+				cout << runCode(raw_input) << endl;
+			} catch (const logic_error& e) {
+				// logic_error's are thrown for invalid code.
+				cout << "[ERROR]\t" << e.what() << endl;
+			} catch (const exception& e) {
+				// runtime_error's are internal errors at no fault of the user.
+				cout << endl << endl << "--[SYSTEM ERROR]--" << endl << endl << e.what() << endl << endl;
 			} catch (...) {
-				cout << "An unkown error occured" << endl;
+				cout << "\n\n--[ERROR]--\t\tAn unkown error occured" << endl;
 			}
 		}
 	}

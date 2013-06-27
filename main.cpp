@@ -4,7 +4,6 @@
 
 #ifdef ELISP_TEST
 
-#	define CATCH_CONFIG_MAIN
 #	include "catch.hpp" // The catch unit testing framework
 #	include "elisp.h" 	// The entire elisp library
 #	include "internal/test.h" // Norvig's lispy test suite
