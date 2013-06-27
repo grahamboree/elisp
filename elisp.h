@@ -17,9 +17,9 @@
 
 using namespace std;
 
-#include "data.h"
-#include "util.h"
-#include "prelude.h"
+#include "internal/data.h"
+#include "internal/util.h"
+#include "internal/prelude.h"
 
 //////////////////////////////////////////////////////////////////////////
 class Program {

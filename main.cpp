@@ -10,7 +10,7 @@
 #include "elisp.h"    // The entire elisp library
 
 #ifdef ELISP_TEST
-#	include "test.h" // Norvig's lispy test suite
+#	include "internal/test.h" // Norvig's lispy test suite
 #else
 // If given a file argument, runs the file,
 // otherwise it just runs the repl
