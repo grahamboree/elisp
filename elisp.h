@@ -16,15 +16,17 @@ using std::cin;
 using std::copy;
 using std::cout;
 using std::endl;
+using std::exception;
 using std::istream_iterator;
 using std::istringstream;
 using std::map;
 using std::ostream;
 using std::ostringstream;
+using std::runtime_error;
 using std::string;
 using std::vector;
 
-#include "internal/Assert.h"
+#include "internal/assert.h"
 #include "internal/Cells.h"
 #include "internal/util.h"
 #include "internal/Environment.h"
@@ -45,10 +47,16 @@ public:
 	// Read eval print loop.
 	void repl(string prompt = "elisp> ") {
 		while (true) {
-			cout << prompt;
-			string raw_input;
-			getline(cin, raw_input);
-			cout << runCode(raw_input) << endl << endl;
+			try {
+				cout << prompt;
+				string raw_input;
+				getline(cin, raw_input);
+				cout << runCode(raw_input) << endl << endl;
+			} catch (exception& e) {
+				cout << e.what() << endl;
+			} catch (...) {
+				cout << "An unkown error occured" << endl;
+			}
 		}
 	}
 public:

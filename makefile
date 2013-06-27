@@ -3,7 +3,7 @@ INCLUDES =
 DEFINES =
 EXEC_NAME = elisp
 
-HEADERS = $(shell ls *.h)
+HEADERS = $(shell ls *.h ./internal/*.h)
 ELISP_SRC = main.cpp
 
 all: elisp
