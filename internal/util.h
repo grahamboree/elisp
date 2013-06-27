@@ -1,13 +1,13 @@
+/*
+ *
+ */
+
 #pragma once
 
-#include <cstdarg>
-#include "Cells.h"
-#include "Assert.h"
-
 ////////////////////////////////////////////////////////////////////////////////
-void printTokenList(list<string> inTokens) {
-	list<string>::const_iterator tokenIter = inTokens.begin();
-	list<string>::const_iterator tokensEnd = inTokens.end();
+void printTokenList(vector<string> inTokens) {
+	vector<string>::const_iterator tokenIter = inTokens.begin();
+	vector<string>::const_iterator tokensEnd = inTokens.end();
 
 	for (;tokenIter != tokensEnd; ++tokenIter, cout << " ")
 		cout << *tokenIter;

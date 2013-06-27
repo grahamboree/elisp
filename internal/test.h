@@ -4,6 +4,8 @@
 
 #pragma once
 
+namespace elisp {
+
 string result(string inCode, Program& program) {
 	return Program::to_string(program.eval(Program::read(inCode)));
 }
@@ -138,3 +140,5 @@ lispy_tests = [
      3) ; final comment""", [1,2,3]),
     ]
 */
+
+}

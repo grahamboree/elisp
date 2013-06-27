@@ -4,7 +4,6 @@
 
 #pragma once 
 
-#include "Assert.h"
 class Environment;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -163,8 +162,8 @@ struct lambda_cell : public cell_t {
 		ss << "(lambda (";
 
 		// parameters
-		list<symbol_cell*>::const_iterator parameterIter = mParameters.begin();
-		list<symbol_cell*>::const_iterator parametersEnd = mParameters.end();
+		vector<symbol_cell*>::const_iterator parameterIter = mParameters.begin();
+		vector<symbol_cell*>::const_iterator parametersEnd = mParameters.end();
 		while (parameterIter != parametersEnd) {
 			ss << (*parameterIter);
 			++parameterIter;
@@ -178,8 +177,8 @@ struct lambda_cell : public cell_t {
 
 
 		// body expressions
-		list<cell_t*>::const_iterator bodyExprIter = mBodyExpressions.begin();
-		list<cell_t*>::const_iterator bodyExprsEnd = mBodyExpressions.end();
+		vector<cell_t*>::const_iterator bodyExprIter = mBodyExpressions.begin();
+		vector<cell_t*>::const_iterator bodyExprsEnd = mBodyExpressions.end();
 		while (bodyExprIter != bodyExprsEnd) {
 			ss << (*bodyExprIter);
 			++bodyExprIter;
@@ -194,8 +193,8 @@ struct lambda_cell : public cell_t {
 		return ss.str();
 	}
 
-	list<symbol_cell*> 	mParameters; // list of 0 or more arguments
-	list<cell_t*> 	mBodyExpressions; // list of 1 or more body statements.
+	vector<symbol_cell*> 	mParameters; // list of 0 or more arguments
+	vector<cell_t*> 	mBodyExpressions; // list of 1 or more body statements.
 };
 
 ////////////////////////////////////////////////////////////////////////////////

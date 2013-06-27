@@ -3,15 +3,19 @@
  */
 
 #ifdef ELISP_TEST
+
 #	define CATCH_CONFIG_MAIN
-#	include "catch.hpp"  // The catch unit testing framework
-#endif 
-
-#include "elisp.h"    // The entire elisp library
-
-#ifdef ELISP_TEST
+#	include "catch.hpp" // The catch unit testing framework
+#	include "elisp.h" 	// The entire elisp library
 #	include "internal/test.h" // Norvig's lispy test suite
-#else
+
+#else 
+
+#include <fstream>
+#include "elisp.h" // The entire elisp library
+using namespace elisp;
+using namespace std;
+
 // If given a file argument, runs the file,
 // otherwise it just runs the repl
 int main(int argc, char *argv[]) {
@@ -31,4 +35,5 @@ int main(int argc, char *argv[]) {
 	}
 	return 0;
 }
+
 #endif

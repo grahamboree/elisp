@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "util.h"
-
 struct numerical_proc : public proc_cell {
 protected:
 	double getOpValue(cell_t* inOp) {

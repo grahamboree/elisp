@@ -4,30 +4,40 @@
 
 #pragma once
 
-#include <algorithm>
 #include <iostream>
-#include <fstream>
-#include <iterator>
-#include <list>
 #include <map>
-#include <sstream>
-#include <streambuf>
 #include <string>
+#include <sstream>
 #include <vector>
 
-using namespace std;
+namespace elisp {
+using std::back_inserter;
+using std::cin;
+using std::copy;
+using std::cout;
+using std::endl;
+using std::istream_iterator;
+using std::istringstream;
+using std::map;
+using std::ostream;
+using std::ostringstream;
+using std::string;
+using std::vector;
 
-#include "internal/data.h"
+#include "internal/Assert.h"
+#include "internal/Cells.h"
 #include "internal/util.h"
+#include "internal/Environment.h"
+#include "internal/data.h"
 #include "internal/prelude.h"
 
 //////////////////////////////////////////////////////////////////////////
 class Program {
 public:
 	static string 		removeComments(string s);
-	static list<string> tokenize(string s);
+	static vector<string> tokenize(string s);
 	static cell_t* 		atom(string token);
-	static cell_t* 		read_from(list<string>& inTokens);
+	static cell_t* 		read_from(vector<string>& inTokens);
 	static cell_t* 		read(string s);
 	static string 		to_string(cell_t* exp);
 
@@ -58,18 +68,18 @@ string Program::removeComments(string s) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-list<string> Program::tokenize(string s) {
+vector<string> Program::tokenize(string s) {
 	removeComments(s);
 	
 	replaceAll(s, "(", " ( ");
 	replaceAll(s, ")", " ) ");
 
 	// Split by whitespace
-	list<string> tokens;
+	vector<string> tokens;
 	istringstream iss(s);
 	copy(istream_iterator<string>(iss),
 			istream_iterator<string>(),
-			back_inserter<list<string> >(tokens));
+			back_inserter<vector<string> >(tokens));
 	return tokens;
 }
 
@@ -90,27 +100,27 @@ cell_t* Program::atom(string token) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-cell_t* Program::read_from(list<string>& inTokens) {
+cell_t* Program::read_from(vector<string>& inTokens) {
 	trueOrDie(!inTokens.empty(), "Unexpected EOF while reading");
 
-	string token = inTokens.front();
-	inTokens.pop_front();
+	string token = inTokens.back();
+	inTokens.pop_back();
 
 	if (token == "(") {
-		if (inTokens.front() == ")") {
+		if (inTokens.back() == ")") {
 			return empty_list;
 		}
 
 		// Generate a linked list of the elements in the list.
 		cons_cell* currentPair;
 		list_cell* listatom = currentPair = new cons_cell(read_from(inTokens), NULL);
-		while (inTokens.front() != ")") {
+		while (inTokens.back() != ")") {
 			cons_cell* newCell = new cons_cell(read_from(inTokens), NULL);
 			currentPair->cdr = newCell;
 			currentPair = newCell;
 		}
 
-		inTokens.pop_front(); // pop off ")"
+		inTokens.pop_back();
 
 		return listatom;
 	}
@@ -123,11 +133,15 @@ cell_t* Program::read(string s) {
 	ostringstream ss;
 	ss << "(begin " << s << " )";
 
-	list<string> tokens = tokenize(ss.str());
+	vector<string> tokens = tokenize(ss.str());
+
+	// Tokens are reversed for efficient access and removal.
+	vector<string> rtokens(tokens.rbegin(), tokens.rend());
 
 	// A program is a list of sexpressions.  Take all the individual sexpressions and 
 	// wrap them in a function taking no arguments.  (semantically the same as a "begin")
-	return read_from(tokens);
+	
+	return read_from(rtokens);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,3 +164,4 @@ void Program::repl(string prompt) {
 	}
 }
 // 1}}}
+}

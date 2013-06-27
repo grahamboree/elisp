@@ -15,7 +15,8 @@ test: $(HEADERS)
 	$(COMPILE) $(INCLUDES) -DELISP_TEST $(ELISP_SRC) -o elispTests
 	./elispTests
 
-elisp: test $(HEADERS) 
+#elisp: test $(HEADERS) 
+elisp: $(HEADERS) 
 	$(COMPILE) $(INCLUDES) $(DEFINES) $(ELISP_SRC) -o $(EXEC_NAME)
 
 clean:
