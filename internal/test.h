@@ -7,12 +7,12 @@
 namespace elisp {
 
 string result(string inCode, Program& program) {
-	return Program::to_string(program.eval(Program::read(inCode)));
+	return program.runCode(inCode);
 }
 
 string result(string inCode) {
 	Program testProgram;
-	return result(inCode, testProgram); 
+	return testProgram.runCode(inCode); 
 }
 
 // Norvigs test cases

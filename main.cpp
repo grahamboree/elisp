@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
 		ostringstream ss;
 		string line;
 		while (getline(t, line))
-			ss << Program::removeComments(line);
+			ss << removeComments(line);
 
 		p.runCode(ss.str());
 	} else {

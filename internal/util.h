@@ -4,7 +4,6 @@
 
 #pragma once
 
-////////////////////////////////////////////////////////////////////////////////
 void printTokenList(vector<string> inTokens) {
 	vector<string>::const_iterator tokenIter = inTokens.begin();
 	vector<string>::const_iterator tokensEnd = inTokens.end();
@@ -14,7 +13,6 @@ void printTokenList(vector<string> inTokens) {
 	cout << endl;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 void replaceAll(string& str, const string& from, const string& to) {
 	string::size_type pos = 0;
 	while((pos = str.find(from, pos)) != string::npos) {
@@ -23,7 +21,6 @@ void replaceAll(string& str, const string& from, const string& to) {
 	}
 }
 
-////////////////////////////////////////////////////////////////////////////////
 bool isNumber(string inValue) {
 	string::const_iterator it = inValue.begin();
 	bool hasRadix = false;
@@ -42,7 +39,6 @@ bool isNumber(string inValue) {
 	return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 cons_cell* makeList(std::vector<cell_t*> list) {
 	cons_cell* result = nullptr;
 	typedef vector<cell_t*>::const_reverse_iterator cri;
