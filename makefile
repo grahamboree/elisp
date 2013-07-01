@@ -13,7 +13,7 @@ test: $(HEADERS) elisp.pch
 	./elispTests
 
 #elisp: test $(HEADERS) 
-elisp: $(HEADERS) 
+elisp: $(HEADERS) $(ELISP_SRC)
 	$(COMPILE) $(INCLUDES) $(DEFINES) $(ELISP_SRC) -O4 -o $(EXEC_NAME)
 
 elisp.pch: catch.hpp

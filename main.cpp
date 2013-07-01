@@ -19,7 +19,8 @@ using namespace std;
 // otherwise it just runs the repl
 int main(int argc, char *argv[]) {
 	Program p;
-	if (argc > 1) {
+	(void)argc; (void)argv;
+	/*if (argc > 1) {
 		// File(s) were specified, so run those
 		ifstream t(argv[1]);
 
@@ -29,7 +30,7 @@ int main(int argc, char *argv[]) {
 			ss << removeComments(line);
 
 		p.runCode(ss.str());
-	} else {
+	} else*/ {
 		p.repl();
 	}
 	return 0;

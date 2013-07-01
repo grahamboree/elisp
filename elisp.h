@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <map>
+#include <regex>
 #include <string>
 #include <sstream>
 #include <vector>
