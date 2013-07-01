@@ -26,6 +26,7 @@ struct cell_t {
 	eCellType type;
 	
 	virtual operator string() = 0;
+	operator bool();
 protected:
 	cell_t(eCellType inType) : type(inType) {}
 };
@@ -43,7 +44,6 @@ ostream& operator << (ostream& os, cell_t& obj) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Booleans
 struct bool_cell : public cell_t {
 	bool value;
 	bool_cell(bool inValue) :cell_t(kCellType_bool), value(inValue) {}
@@ -51,12 +51,11 @@ struct bool_cell : public cell_t {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-bool cell_to_bool(cell_t* inCell) {
-	return (inCell->type != kCellType_bool || static_cast<bool_cell*>(inCell)->value);
+cell_t::operator bool() {
+	return (type != kCellType_bool || static_cast<bool_cell*>(this)->value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Number
 struct number_cell : public cell_t {
 	string valueString;
 	double value;

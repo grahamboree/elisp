@@ -1,3 +1,4 @@
+/* vim: setlocal foldmethod=marker */
 /*
  * The elisp standard prelude
  */
@@ -373,7 +374,7 @@ TEST_CASE("prelude/eq", "=") {
 	
 	result = proc.evalProc(twoArgs, testEnv);
 	REQUIRE(result->type == kCellType_bool);
-	REQUIRE(cell_to_bool(result));
+	REQUIRE(static_cast<bool>(result));
 	
 	// Seven arguments
 	cons_cell* sevenArgs = makeList({
@@ -383,7 +384,7 @@ TEST_CASE("prelude/eq", "=") {
 	
 	result = proc.evalProc(sevenArgs, testEnv);
 	REQUIRE(result->type == kCellType_bool);
-	REQUIRE(cell_to_bool(result));
+	REQUIRE(static_cast<bool>(result));
 	
 	// Nested
 	cons_cell* nested = makeList({
@@ -395,7 +396,7 @@ TEST_CASE("prelude/eq", "=") {
 	
 	result = proc.evalProc(nested, testEnv);
 	REQUIRE(result->type == kCellType_bool);
-	REQUIRE(cell_to_bool(result));
+	REQUIRE(static_cast<bool>(result));
 }
 #endif // }}}
 
@@ -417,7 +418,7 @@ inline cell_t* if_proc::evalProc(list_cell* args, Environment& env) {
 
 	trueOrDie(currentCell == empty_list, "Too many arguments specified to \"if\"");
 
-	return env.eval((cell_to_bool(env.eval(test)) ? conseq : alt));
+	return env.eval((static_cast<bool>(env.eval(test)) ? conseq : alt));
 }
 
 #ifdef ELISP_TEST // {{{
@@ -767,3 +768,4 @@ inline cell_t* less_proc::evalProc(list_cell* args, Environment& env) {
 
 	return new bool_cell(result);
 }
+
