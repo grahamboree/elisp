@@ -44,7 +44,12 @@ public:
 	cell_t* eval(cell_t* x) { return global_env.eval(x); }
 
 	// Eval a string of code and give the result as a string.
-	string runCode(string inCode) { return to_string(eval(read(inCode))); }
+	string runCode(string inCode) {
+		cell_t* result = nullptr;
+		for (auto expr : read(inCode))
+			result = eval(expr);
+		return to_string(result);
+	}
 
 	// Read eval print loop.
 	void repl(string prompt = "elisp> ") {

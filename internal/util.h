@@ -4,15 +4,9 @@
 
 #pragma once
 
-void printTokenList(vector<string> inTokens) {
-	vector<string>::const_iterator tokenIter = inTokens.begin();
-	vector<string>::const_iterator tokensEnd = inTokens.end();
-
-	for (;tokenIter != tokensEnd; ++tokenIter, cout << " ")
-		cout << *tokenIter;
-	cout << endl;
-}
-
+/**
+ * Replaces all occurances of \p from with \p to in \p str
+ */
 void replaceAll(string& str, const string& from, const string& to) {
 	string::size_type pos = 0;
 	while((pos = str.find(from, pos)) != string::npos) {
@@ -21,6 +15,9 @@ void replaceAll(string& str, const string& from, const string& to) {
 	}
 }
 
+/**
+ * Returns \c true if \p inValue is a string representation of a number, \c false otherwise.
+ */
 bool isNumber(string inValue) {
 	string::const_iterator it = inValue.begin();
 	bool hasRadix = false;
@@ -39,6 +36,12 @@ bool isNumber(string inValue) {
 	return false;
 }
 
+/**
+ * A helper that creates a lisp list given a vector of the list's contents.
+ *
+ * A convenient use-case:
+ * cons_cell* list_cell = makeList({ new symbol_cell("+"), new number_cell(1), new number_cell(2)});
+ */
 cons_cell* makeList(std::vector<cell_t*> list) {
 	cons_cell* result = nullptr;
 	typedef vector<cell_t*>::const_reverse_iterator cri;

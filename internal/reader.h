@@ -4,6 +4,10 @@
 
 #pragma once
 
+/**
+ * Given a in input stream, split it into a list of string tokens which
+ * can easily be consumed by the reader.
+ */
 vector<string> tokenize(std::istream& is) {
 	std::regex reg( R"(\s*)" // skip whitespace
 					"("
@@ -32,56 +36,38 @@ vector<string> tokenize(std::istream& is) {
 	return tokens;
 }
 
-cell_t* atom(string token) {
+/**
+ * Given a string token, creates the atom it represents
+ */
+cell_t* atom(const string& token) {
 	if (token[0] == '#') {
-		string::value_type& boolid = token[1];
+		const string::value_type& boolid = token[1];
 		bool val = (boolid == 't' || boolid == 'T');
-		trueOrDie((val || boolid == 'f' || boolid == 'F'), "Unknown identifier " + token);
+		trueOrDie((val || boolid == 'f' || boolid == 'F') && token.size() == 2, "Unknown identifier " + token);
 		return new bool_cell(val);
 	} else if (token[0] == '"') {
-		throw runtime_error("string literals are not implemented");
+		return new string_cell(token);
 	} else if (isNumber(token)) {
-		number_cell* n = new number_cell(atof(token.c_str()));
+		std::istringstream iss(token);
+		double value = 0.0;
+		iss >> value;
+		number_cell* n = new number_cell(value);
 		n->valueString = token;
 		return n;
 	} else {
-		return new symbol_cell(token.c_str());
+		return new symbol_cell(token);
 	}
 }
 
-cell_t* read_from(vector<string>& inTokens) {
-	trueOrDie(!inTokens.empty(), "Unexpected EOF while reading");
-
-	string token = inTokens.back();
-	inTokens.pop_back();
-
-	if (token == "(") {
-		if (inTokens.back() == ")")
-			return empty_list;
-
-		// Generate a linked list of the elements in the list.
-		cons_cell* currentPair = new cons_cell(read_from(inTokens), NULL);
-		trueOrDie(currentPair->car != NULL,
-				"Missing procedure.  Original code was most likely (), which is illegal.");
-		list_cell* listatom = currentPair;
-		while (inTokens.back() != ")") {
-			currentPair->cdr = new cons_cell(read_from(inTokens), NULL);
-			currentPair = currentPair->cdr;
-		}
-
-		inTokens.pop_back();
-
-		return listatom;
-	}
-	trueOrDie(token != ")", "Unexpected \")\"");
-	return atom(token);
-}
-
-vector<cell_t*> read_ahead(const vector<string>& tokens) {
+/**
+ * Returns a list of top-level expressions.
+ */
+vector<cell_t*> read(std::istream& istream) {
+	vector<string> tokens = tokenize(istream);
 	auto it = tokens.begin();
 	auto end = tokens.end();
 
-	vector<vector<cell_t*>> exprStack;
+	vector<vector<cell_t*>> exprStack; // The current stack of nested list expressions.
 	exprStack.emplace_back(); // top-level scope
 
 	for (;it != end; ++it) {
@@ -104,17 +90,11 @@ vector<cell_t*> read_ahead(const vector<string>& tokens) {
 }
 
 /**
- * Returns a list of top-level expressions wrapped in an implicit (begin ...)
+ * Returns a list of top-level expressions.
  */
-cell_t* read(string s) {
+vector<cell_t*> read(string s) {
 	istringstream iss(s);
-	vector<string> tokens = tokenize(iss);
-	vector<string> rtokens(tokens.rbegin(), tokens.rend());
-	//return read_from(rtokens);
-	vector<cell_t*> beginExpr = { new symbol_cell("begin") };
-	vector<cell_t*> topLevelExprs = read_ahead(tokens);
-	beginExpr.insert(beginExpr.end(), topLevelExprs.begin(), topLevelExprs.end());
-	return makeList(beginExpr);
+	return read(iss);
 }
 
 string to_string(cell_t* exp) {
