@@ -204,7 +204,6 @@ cons_cell::cons_cell(cell_t* inCar, cons_cell* inCdr)
 {
 }
 
-
 cons_cell::operator string() {
 	ostringstream ss;
 	ss << "(";

@@ -5,34 +5,62 @@
 #pragma once
 
 /**
+ * A wrapper around std::istream that allows you to grab individual tokens lazily.
+ */
+class TokenStream {
+	static const std::regex reg;
+	std::istream& is;
+	std::string line;
+public:
+	TokenStream(std::istream& stream) : is(stream) {}
+
+	/** Gets the next token, or returns the empty string to indicate EOF */
+	string nextToken() {
+		if (line.empty() and !std::getline(is, line))
+			return "";
+
+		std::smatch match;
+		if (std::regex_search(line, match, reg)) {
+			trueOrDie(match.prefix().str() == "", "unknown characters: " + match.prefix().str());
+
+			string matchStr = match[1].str();
+			line = match.suffix().str();
+			if (matchStr.empty() or matchStr[0] == ';')
+				return nextToken();
+			else
+				return matchStr;
+				
+		} else {
+			trueOrDie(false, "Unknown characters: " + line);
+		}
+		return "";
+	}
+};
+
+const std::regex TokenStream::reg(
+		R"(\s*)" // skip whitespace
+	   "("
+			",@|" 				// splice unquote
+			R"([\('`,\)]|)" 			// parens, quoting symbols
+			R"("(?:[\\].|[^\\"])*"|)" // string literals
+			";.*|" 				// comments
+			R"([^\s('"`,;)]*))" // identifiers
+		")");
+
+/**
  * Given a in input stream, split it into a list of string tokens which
- * can easily be consumed by the reader.
+ * can be consumed by the reader.
  */
 vector<string> tokenize(std::istream& is) {
-	std::regex reg( R"(\s*)" // skip whitespace
-					"("
-						",@|" 				// splice unquote
-						R"([\('`,\)]|)" 			// parens, quoting symbols
-						R"("(?:[\\].|[^\\"])*"|)" // string literals
-						";.*|" 				// comments
-						R"([^\s('"`,;)]*))" // identifiers
-					")");
-
 	vector<string> tokens;
-	std::smatch match;
-	string line;
+	TokenStream stream(is);
 
-	while (std::getline(is, line)) {
-		while (!line.empty() && std::regex_search(line, match, reg)) {
-			trueOrDie(match.prefix().str() == "",
-					"unknown characters: " + match.prefix().str());
-			if (match.str(1) != "" and match.str(1).at(0) != ';')
-				tokens.push_back(match[1]);
-			line = match.suffix().str();
-		}
-		trueOrDie(line == "", "unknown characters: " + line);
+	string token = stream.nextToken();
+	while (!token.empty()) {
+		tokens.push_back(token);
+		token = stream.nextToken();
 	}
-
+	
 	return tokens;
 }
 
