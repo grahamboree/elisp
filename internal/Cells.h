@@ -31,17 +31,8 @@ protected:
 	cell_t(eCellType inType) : type(inType) {}
 };
 
-////////////////////////////////////////////////////////////////////////////////
-ostream& operator << (ostream& os, cell_t* obj) {
-	os << ((string)(*obj));
-	return cout;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-ostream& operator << (ostream& os, cell_t& obj) {
-	os << (string)obj;
-	return cout;
-}
+ostream& operator << (ostream& os, cell_t* obj) { return (os << ((string)(*obj))); }
+ostream& operator << (ostream& os, cell_t& obj) { return (os << (string)obj); }
 
 ////////////////////////////////////////////////////////////////////////////////
 struct bool_cell : public cell_t {
@@ -49,11 +40,6 @@ struct bool_cell : public cell_t {
 	bool_cell(bool inValue) :cell_t(kCellType_bool), value(inValue) {}
 	virtual operator string() { return value ? "#t" : "#f"; }
 };
-
-////////////////////////////////////////////////////////////////////////////////
-cell_t::operator bool() {
-	return (type != kCellType_bool || static_cast<bool_cell*>(this)->value);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 struct number_cell : public cell_t {
@@ -218,3 +204,9 @@ cons_cell::operator string() {
 	ss << ")";
 	return ss.str();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+bool cell_to_bool(cell_t* cell) {
+	return (cell != empty_list and (cell->type != kCellType_bool || static_cast<bool_cell*>(cell)->value));
+}
+

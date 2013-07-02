@@ -12,11 +12,6 @@
 #include <vector>
 
 namespace elisp {
-using std::back_inserter;
-using std::cin;
-using std::copy;
-using std::cout;
-using std::endl;
 using std::exception;
 using std::istream_iterator;
 using std::istringstream;
@@ -53,11 +48,14 @@ public:
 
 	// Read eval print loop.
 	void repl(string prompt = "elisp> ") {
+		using std::cout;
+		using std::endl;
+
 		while (true) {
 			try {
 				cout << prompt;
 				string raw_input;
-				if (!std::getline(cin, raw_input)) {
+				if (!std::getline(std::cin, raw_input)) {
 					cout << endl << endl;
 					break;
 				}

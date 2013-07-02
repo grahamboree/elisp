@@ -12,10 +12,10 @@ class TokenStream {
 	std::istream& is;
 	std::string line;
 public:
-	TokenStream(std::istream& stream) : is(stream) {}
+TokenStream(std::istream& stream) : is(stream) {}
 
 	/** Gets the next token, or returns the empty string to indicate EOF */
-	string nextToken() {
+	std::string nextToken() {
 		if (line.empty() and !std::getline(is, line))
 			return "";
 
@@ -23,7 +23,7 @@ public:
 		if (std::regex_search(line, match, reg)) {
 			trueOrDie(match.prefix().str() == "", "unknown characters: " + match.prefix().str());
 
-			string matchStr = match[1].str();
+			std::string matchStr = match[1].str();
 			line = match.suffix().str();
 			if (matchStr.empty() or matchStr[0] == ';')
 				return nextToken();
@@ -51,9 +51,9 @@ const std::regex TokenStream::reg(
 /**
  * Given a string token, creates the atom it represents
  */
-cell_t* atom(const string& token) {
+cell_t* atom(const std::string& token) {
 	if (token[0] == '#') {
-		const string::value_type& boolid = token[1];
+		const std::string::value_type& boolid = token[1];
 		bool val = (boolid == 't' || boolid == 'T');
 		trueOrDie((val || boolid == 'f' || boolid == 'F') && token.size() == 2, "Unknown identifier " + token);
 		return new bool_cell(val);
@@ -74,11 +74,11 @@ cell_t* atom(const string& token) {
 /**
  * Returns a list of top-level expressions.
  */
-vector<cell_t*> read(TokenStream& stream) {
-	vector<vector<cell_t*>> exprStack; // The current stack of nested list expressions.
+std::vector<cell_t*> read(TokenStream& stream) {
+	std::vector<std::vector<cell_t*>> exprStack; // The current stack of nested list expressions.
 	exprStack.emplace_back(); // top-level scope
 
-	for (string token = stream.nextToken(); !token.empty(); token = stream.nextToken()) {
+	for (std::string token = stream.nextToken(); !token.empty(); token = stream.nextToken()) {
 		if (token == "(") {
 			// Push a new scope onto the stack.
 			exprStack.emplace_back();
@@ -100,18 +100,18 @@ vector<cell_t*> read(TokenStream& stream) {
 /**
  * Returns a list of top-level expressions.
  */
-vector<cell_t*> read(string s) {
-	istringstream iss(s);
+std::vector<cell_t*> read(string s) {
+	std::istringstream iss(s);
 	TokenStream tokStream(iss);
 	return read(tokStream);
 }
 
-string to_string(cell_t* exp) {
-	ostringstream ss;
+std::string to_string(cell_t* exp) {
+	std::ostringstream ss;
 	if (exp)
 		ss << exp;
 	else
-		ss << "'" << "()";
+		ss << "'()";
 	return ss.str();
 }
 

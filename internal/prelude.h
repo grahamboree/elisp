@@ -374,7 +374,7 @@ TEST_CASE("prelude/eq", "=") {
 	
 	result = proc.evalProc(twoArgs, testEnv);
 	REQUIRE(result->type == kCellType_bool);
-	REQUIRE(static_cast<bool>(result));
+	REQUIRE(cell_to_bool(result));
 	
 	// Seven arguments
 	cons_cell* sevenArgs = makeList({
@@ -384,7 +384,7 @@ TEST_CASE("prelude/eq", "=") {
 	
 	result = proc.evalProc(sevenArgs, testEnv);
 	REQUIRE(result->type == kCellType_bool);
-	REQUIRE(static_cast<bool>(result));
+	REQUIRE(cell_to_bool(result));
 	
 	// Nested
 	cons_cell* nested = makeList({
@@ -396,7 +396,7 @@ TEST_CASE("prelude/eq", "=") {
 	
 	result = proc.evalProc(nested, testEnv);
 	REQUIRE(result->type == kCellType_bool);
-	REQUIRE(static_cast<bool>(result));
+	REQUIRE(cell_to_bool(result));
 }
 #endif // }}}
 
@@ -418,7 +418,7 @@ inline cell_t* if_proc::evalProc(list_cell* args, Environment& env) {
 
 	trueOrDie(currentCell == empty_list, "Too many arguments specified to \"if\"");
 
-	return env.eval((static_cast<bool>(env.eval(test)) ? conseq : alt));
+	return env.eval((cell_to_bool(env.eval(test)) ? conseq : alt));
 }
 
 #ifdef ELISP_TEST // {{{
@@ -701,7 +701,7 @@ inline cell_t* let_proc::evalProc(list_cell* args, Environment& env) {
 inline cell_t* display_proc::evalProc(list_cell* args, Environment& env) {
 	cons_cell* currentArgument = args;
 	for (; currentArgument; currentArgument = currentArgument->cdr) 
-		cout << env.eval(currentArgument->car) << endl;
+		std::cout << env.eval(currentArgument->car) << std::endl;
 	return empty_list;
 }
 
