@@ -11,3 +11,4 @@ elisp.xcodeproj/xcuserdata
 elisp.xcodeproj/project.xcworkspace
 elisp.xcodeproj/xcuserdata
 reference/
+*.pch

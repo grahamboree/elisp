@@ -37,6 +37,7 @@ public:
 	}
 };
 
+/** Tokenizer regex */
 const std::regex TokenStream::reg(
 		R"(\s*)" // skip whitespace
 	   "("
@@ -46,23 +47,6 @@ const std::regex TokenStream::reg(
 			";.*|" 				// comments
 			R"([^\s('"`,;)]*))" // identifiers
 		")");
-
-/**
- * Given a in input stream, split it into a list of string tokens which
- * can be consumed by the reader.
- */
-vector<string> tokenize(std::istream& is) {
-	vector<string> tokens;
-	TokenStream stream(is);
-
-	string token = stream.nextToken();
-	while (!token.empty()) {
-		tokens.push_back(token);
-		token = stream.nextToken();
-	}
-	
-	return tokens;
-}
 
 /**
  * Given a string token, creates the atom it represents
@@ -90,19 +74,16 @@ cell_t* atom(const string& token) {
 /**
  * Returns a list of top-level expressions.
  */
-vector<cell_t*> read(std::istream& istream) {
-	vector<string> tokens = tokenize(istream);
-	auto it = tokens.begin();
-	auto end = tokens.end();
-
+vector<cell_t*> read(TokenStream& stream) {
 	vector<vector<cell_t*>> exprStack; // The current stack of nested list expressions.
 	exprStack.emplace_back(); // top-level scope
 
-	for (;it != end; ++it) {
-		const string& token = *it;
+	for (string token = stream.nextToken(); !token.empty(); token = stream.nextToken()) {
 		if (token == "(") {
+			// Push a new scope onto the stack.
 			exprStack.emplace_back();
 		} else if (token == ")") {
+			// Pop the current scope off the stack and add it as a list to its parent scope.
 			trueOrDie(exprStack.size() > 1, "Unexpected ) while reading");
 			cell_t* listexpr = makeList(exprStack.back());
 			exprStack.pop_back();
@@ -112,7 +93,6 @@ vector<cell_t*> read(std::istream& istream) {
 		}
 	}
 
-	trueOrDie(it == end, "expected EOF");
 	trueOrDie(exprStack.size() == 1, "Unexpected EOF while reading");
 	return exprStack.back();
 }
@@ -122,7 +102,8 @@ vector<cell_t*> read(std::istream& istream) {
  */
 vector<cell_t*> read(string s) {
 	istringstream iss(s);
-	return read(iss);
+	TokenStream tokStream(iss);
+	return read(tokStream);
 }
 
 string to_string(cell_t* exp) {

@@ -1,4 +1,4 @@
-/* vim: setlocal foldmethod=marker */
+// vim: set foldmethod=marker:
 /*
  * The elisp standard prelude
  */
