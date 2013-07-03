@@ -43,6 +43,11 @@ TEST_CASE("NorvigLispyTests/define_var", "define_var") {
 	REQUIRE(result("(+ x x)", testProgram) == "6");
 }
 
+TEST_CASE("closures", "") {
+	Program testProgram;
+	testProgram.runCode("(define (x f) (lambda (g) (+ f g)))");
+	REQUIRE(result("((x 4) 3)", testProgram) == "7");
+}
 /*
     ("(quote (testing 1 (2.0) -3.14e159))", ['testing', 1, [2.0], -3.14e159]),
     ("(+ 2 2)", 4),

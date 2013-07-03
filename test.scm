@@ -13,3 +13,7 @@
 	  (+ (fib (- n 1)) (fib (- n 2))))))
 
 (display (fib 10))
+
+(define (x f) (lambda (g) (+ f g)))
+
+(display ((x 4) 3))

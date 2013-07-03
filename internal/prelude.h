@@ -22,7 +22,7 @@ struct if_proc 		: public proc_cell  { virtual cell_t* evalProc(list_cell* args,
 struct quote_proc 	: public proc_cell  { virtual cell_t* evalProc(list_cell* args, Environment&); };
 struct set_proc 	: public proc_cell  { virtual cell_t* evalProc(list_cell* args, Environment& env); };
 struct define_proc 	: public proc_cell  { virtual cell_t* evalProc(list_cell* args, Environment& env); };
-struct lambda_proc 	: public proc_cell  { virtual cell_t* evalProc(list_cell* args, Environment&); };
+struct lambda_proc 	: public proc_cell  { virtual cell_t* evalProc(list_cell* args, Environment& env); };
 struct begin_proc 	: public proc_cell  { virtual cell_t* evalProc(list_cell* args, Environment& env); };
 struct let_proc 	: public proc_cell  { virtual cell_t* evalProc(list_cell* args, Environment& env); };
 struct display_proc : public proc_cell  { virtual cell_t* evalProc(list_cell* args, Environment& env); };
@@ -397,7 +397,8 @@ TEST_CASE("prelude/eq", "=") {
 	result = proc.evalProc(nested, testEnv);
 	REQUIRE(result->type == kCellType_bool);
 	REQUIRE(cell_to_bool(result));
-}
+}\
+
 #endif // }}}
 
 inline cell_t* if_proc::evalProc(list_cell* args, Environment& env) {
@@ -556,7 +557,7 @@ inline cell_t* define_proc::evalProc(list_cell* args, Environment& env) {
 		string functionName = static_cast<symbol_cell*>(currentParameter->car)->identifier;
 
 		// Construct a lambda and bind it to the function name.
-		lambda_cell* lambda = new lambda_cell;
+		lambda_cell* lambda = new lambda_cell(&env);
 
 		// Get the parameter name list if there are any specified.
 		currentParameter = currentParameter->cdr;
@@ -609,12 +610,7 @@ TEST_CASE("prelude/define", "define") {
 #endif // }}}
 
 
-inline cell_t* lambda_proc::evalProc(list_cell* args, Environment&) {
-	//@TODO
-	//    elif x[0] == 'lambda':         # (lambda (var*) exp)
-	//        (_, vars, exp) = x
-	//        return lambda *args: eval(exp, Env(vars, args, env))
-
+inline cell_t* lambda_proc::evalProc(list_cell* args, Environment& env) {
 	trueOrDie(args != empty_list, "Procedure 'lambda' requires at least 2 arguments, 0 given");
 	cons_cell* currentCell = args;
 
@@ -631,7 +627,7 @@ inline cell_t* lambda_proc::evalProc(list_cell* args, Environment&) {
 	cons_cell* listOfBodyStatements = currentCell;
 
 	// Create a lambda and return it.
-	lambda_cell* cell = new lambda_cell;
+	lambda_cell* cell = new lambda_cell(&env);
 	
 	// Add the parameters.
 	currentCell = parameters;
