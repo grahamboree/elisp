@@ -31,8 +31,8 @@ protected:
 	cell_t(eCellType inType) : type(inType) {}
 };
 
-ostream& operator << (ostream& os, cell_t* obj) { return (os << ((string)(*obj))); }
-ostream& operator << (ostream& os, cell_t& obj) { return (os << (string)obj); }
+std::ostream& operator << (std::ostream& os, cell_t* obj) { return (os << ((string)(*obj))); }
+std::ostream& operator << (std::ostream& os, cell_t& obj) { return (os << (string)obj); }
 
 ////////////////////////////////////////////////////////////////////////////////
 struct bool_cell : public cell_t {
@@ -46,10 +46,9 @@ struct number_cell : public cell_t {
 	string valueString;
 	double value;
 	number_cell(double inValue) :cell_t(kCellType_number), value(inValue) {}
-	//virtual operator string() { ostringstream ss; ss << ((value == (int)value) ? (int)value : value); return ss.str(); }
 	virtual operator string() {
 		if (valueString.empty()) {
-			ostringstream ss;
+			std::ostringstream ss;
 			ss << ((value == (int)value) ? (int)value : value);
 			return ss.str();
 		}
@@ -62,7 +61,7 @@ struct number_cell : public cell_t {
 struct char_cell : public cell_t { 
 	char value;
 	char_cell(char inValue) :cell_t(kCellType_char), value(inValue) {}
-	virtual operator string() { ostringstream ss; ss << value; return ss.str(); }
+	virtual operator string() { std::ostringstream ss; ss << value; return ss.str(); }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,7 +143,7 @@ struct lambda_cell : public cell_t {
 
 	virtual cell_t* eval(list_cell* args);
 	virtual operator string() {
-		ostringstream ss;
+		std::ostringstream ss;
 		ss << "(lambda (";
 
 		// parameters
@@ -192,7 +191,7 @@ cons_cell::cons_cell(cell_t* inCar, cons_cell* inCdr)
 }
 
 cons_cell::operator string() {
-	ostringstream ss;
+	std::ostringstream ss;
 	ss << "(";
 
 	cons_cell* currentCell = this;

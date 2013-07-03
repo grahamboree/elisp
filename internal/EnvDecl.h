@@ -11,7 +11,7 @@ struct cell_t;
 class Environment {
 	Environment* outer;
 public:
-	map<string, cell_t*> mSymbolMap;
+	std::map<string, cell_t*> mSymbolMap;
 
 	Environment();
 	Environment(Environment& inOuter);

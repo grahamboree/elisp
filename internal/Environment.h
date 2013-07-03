@@ -4,23 +4,23 @@
 
 #pragma once
 
-Environment::Environment() :outer(NULL) {}
-Environment::Environment(Environment& inOuter) :outer(&inOuter) {}
-Environment::Environment(Environment* inOuter) :outer(inOuter) {}
+inline Environment::Environment() :outer(NULL) {}
+inline Environment::Environment(Environment& inOuter) :outer(&inOuter) {}
+inline Environment::Environment(Environment* inOuter) :outer(inOuter) {}
 
-Environment* Environment::find(const string& var) {
+inline Environment* Environment::find(const string& var) {
 	if (mSymbolMap.find(var) != mSymbolMap.end())
 		return this;
 	trueOrDie(outer != NULL, "Undefined symbol " + var);
 	return outer->find(var);
 }
 
-cell_t* Environment::get(const string& var) {
-	map<string, cell_t*>::iterator position = mSymbolMap.find(var);
+inline cell_t* Environment::get(const string& var) {
+	std::map<string, cell_t*>::iterator position = mSymbolMap.find(var);
 	return position->second;
 }
 
-cell_t* Environment::eval(cell_t* x) {
+inline cell_t* Environment::eval(cell_t* x) {
 	trueOrDie(x != NULL, "Missing procedure.  Original code was most likely (), which is illegal.");
 	
 	if (x->type == kCellType_symbol) {
@@ -53,3 +53,4 @@ cell_t* Environment::eval(cell_t* x) {
 	}
 	return x;
 }
+
