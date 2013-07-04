@@ -4,11 +4,1126 @@
 
 #pragma once
 
-// NOTE: Order matters.  The order indicates dependencies.
-#include "assert.h"
-#include "Cells.h"
-#include "util.h"
-#include "Environment.h"
-#include "data.h"
-#include "prelude.h"
-#include "reader.h"
+namespace elisp {
+	inline cell_t::cell_t(eCellType inType)
+	: type(inType)
+	{
+	}
+
+	std::ostream& operator << (std::ostream& os, cell_t* obj) {
+		return (os << ((string)(*obj)));
+	}
+
+	std::ostream& operator << (std::ostream& os, cell_t& obj) {
+		return (os << (string)obj);
+	}
+
+	number_cell::operator string() {
+		if (valueString.empty()) {
+			std::ostringstream ss;
+			ss << ((value == (int)value) ? (int)value : value);
+			return ss.str();
+		}
+		return valueString;
+	}
+
+	void proc_cell::verifyCell(cons_cell* inCell, string methodName) {
+		trueOrDie(inCell, "Insufficient arguments provided to " + methodName + ".");
+	}
+
+	////////////////////////////////////////////////////////////////////////////////
+	// Lambdas
+	struct lambda_cell : public cell_t {
+		Environment *env;
+		lambda_cell(Environment* outerEnv) :cell_t(kCellType_lambda), env(outerEnv) {}
+
+		virtual cell_t* eval(list_cell* args);
+		virtual operator string() {
+			std::ostringstream ss;
+			ss << "(lambda (";
+
+			// parameters
+			vector<symbol_cell*>::const_iterator parameterIter = mParameters.begin();
+			vector<symbol_cell*>::const_iterator parametersEnd = mParameters.end();
+			while (parameterIter != parametersEnd) {
+				ss << (*parameterIter);
+				++parameterIter;
+
+				if (parameterIter == parametersEnd)
+					break;
+
+				ss << " ";
+			}
+			ss << ") ";
+
+
+			// body expressions
+			vector<cell_t*>::const_iterator bodyExprIter = mBodyExpressions.begin();
+			vector<cell_t*>::const_iterator bodyExprsEnd = mBodyExpressions.end();
+			while (bodyExprIter != bodyExprsEnd) {
+				ss << (*bodyExprIter);
+				++bodyExprIter;
+
+				if (bodyExprIter == bodyExprsEnd)
+					break;
+
+				ss << " ";
+			}
+			ss << ")";
+			
+			return ss.str();
+		}
+
+		vector<symbol_cell*> 	mParameters; // list of 0 or more arguments
+		vector<cell_t*> 	mBodyExpressions; // list of 1 or more body statements.
+	};
+
+	////////////////////////////////////////////////////////////////////////////////
+	cons_cell::cons_cell(cell_t* inCar, cons_cell* inCdr)
+	: cell_t(kCellType_cons)
+	, car(inCar)
+	, cdr(inCdr)
+	{
+	}
+
+	cons_cell::operator string() {
+		std::ostringstream ss;
+		ss << "(";
+
+		cons_cell* currentCell = this;
+		while (currentCell != NULL) {
+			ss << currentCell->car;
+			currentCell = currentCell->cdr;
+			if (currentCell)
+				ss << " ";
+		}
+		ss << ")";
+		return ss.str();
+	}
+
+	////////////////////////////////////////////////////////////////////////////////
+	bool cell_to_bool(cell_t* cell) {
+		return (cell != empty_list and (cell->type != kCellType_bool || static_cast<bool_cell*>(cell)->value));
+	}
+
+	/**
+	 * Replaces all occurances of \p from with \p to in \p str
+	 */
+	void replaceAll(string& str, const string& from, const string& to) {
+		string::size_type pos = 0;
+		while((pos = str.find(from, pos)) != string::npos) {
+			str.replace(pos, from.length(), to);
+			pos += to.length();
+		}
+	}
+
+	/**
+	 * Returns \c true if \p inValue is a string representation of a number, \c false otherwise.
+	 */
+	bool isNumber(string inValue) {
+		string::const_iterator it = inValue.begin();
+		bool hasRadix = false;
+		bool hasDigit = false;
+
+		if (!inValue.empty() && ((hasDigit = (isdigit(*it) != 0)) || *it == '-')) {
+			++it;
+			for (;it != inValue.end(); ++it) {
+				bool digit = (isdigit(*it) != 0);
+				hasDigit = hasDigit || digit;
+				if (!(digit || (!hasRadix && (hasRadix = (*it == '.')))))
+					break;
+			}
+			return hasDigit && it == inValue.end();
+		}
+		return false;
+	}
+
+	/**
+	 * A helper that creates a lisp list given a vector of the list's contents.
+	 *
+	 * A convenient use-case:
+	 * cons_cell* list_cell = makeList({ new symbol_cell("+"), new number_cell(1), new number_cell(2)});
+	 */
+	cons_cell* makeList(std::vector<cell_t*> list) {
+		cons_cell* result = nullptr;
+		typedef vector<cell_t*>::const_reverse_iterator cri;
+		for (cri iter = list.rbegin(); iter != list.rend(); ++iter)
+			result = new cons_cell(*iter, result);
+		return result;
+	}
+
+	inline Environment::Environment() :outer(NULL) {}
+	inline Environment::Environment(Environment& inOuter) :outer(&inOuter) {}
+	inline Environment::Environment(Environment* inOuter) :outer(inOuter) {}
+
+	inline Environment* Environment::find(const string& var) {
+		if (mSymbolMap.find(var) != mSymbolMap.end())
+			return this;
+		trueOrDie(outer != NULL, "Undefined symbol " + var);
+		return outer->find(var);
+	}
+
+	inline cell_t* Environment::get(const string& var) {
+		std::map<string, cell_t*>::iterator position = mSymbolMap.find(var);
+		return position->second;
+	}
+
+	inline cell_t* Environment::eval(cell_t* x) {
+		trueOrDie(x != NULL, "Missing procedure.  Original code was most likely (), which is illegal.");
+		
+		if (x->type == kCellType_symbol) {
+			// Symbol lookup in the current environment.
+			string& id = static_cast<symbol_cell*>(x)->identifier;
+			return find(id)->get(id);
+		} else if (x->type == kCellType_cons) {
+			// Function call
+			cons_cell* listcell = static_cast<cons_cell*>(x);
+			cell_t* callable = this->eval(listcell->car);
+
+			// If the first argument is a symbol, look it up in the current environment.
+			if (callable->type == kCellType_symbol) {
+				string callableName = static_cast<symbol_cell*>(callable)->identifier;
+
+				Environment* enclosingEnvironment = find(callableName);
+				trueOrDie(enclosingEnvironment, "Undefined function: " + callableName);
+
+				callable = enclosingEnvironment->get(callableName);
+			}
+
+			if (callable->type == kCellType_procedure) { 
+				// Eval the procedure with the rest of the arguments.
+				return static_cast<proc_cell*>(callable)->evalProc(listcell->cdr, *this);
+			} else if (callable->type == kCellType_lambda) { 
+				// Eval the lambda with the rest of the arguments.
+				return static_cast<lambda_cell*>(callable)->eval(listcell->cdr);
+			}
+			die("Expected procedure or lambda as first element in an sexpression.");
+		}
+		return x;
+	}
+
+	////////////////////////////////////////////////////////////////////////////////
+	cell_t* lambda_cell::eval(list_cell* args) {
+		Environment* newEnv = new Environment(env);
+
+		// Match the arguments to the parameters.
+		vector<symbol_cell*>::const_iterator parameterIter = mParameters.begin();
+		vector<symbol_cell*>::const_iterator parametersEnd = mParameters.end();
+		for (; parameterIter != parametersEnd; ++parameterIter) {
+			trueOrDie(args != empty_list, "insufficient arguments provided to function");
+			newEnv->mSymbolMap[(*parameterIter)->identifier] = env->eval(args->car);
+			args = args->cdr;
+		}
+
+		// Evaluate the body expressions with the new environment.  Return the result of the last body expression.
+		cell_t* returnVal;
+		vector<cell_t*>::iterator bodyExprIter = mBodyExpressions.begin();
+		vector<cell_t*>::iterator bodyExprsEnd = mBodyExpressions.end();
+		for (; bodyExprIter != bodyExprsEnd; ++bodyExprIter)
+			returnVal = newEnv->eval(*bodyExprIter);
+
+		return returnVal;
+	}
+
+	struct numerical_proc : public proc_cell {
+	protected:
+		double getOpValue(cell_t* inOp) {
+			trueOrDie((inOp->type == kCellType_number), "Expected only number arguments");
+			return static_cast<number_cell*>(inOp)->value;
+		}
+	};
+
+	struct add_proc : public numerical_proc { virtual cell_t* evalProc(list_cell* args, Environment& env); };
+	struct sub_proc : public numerical_proc { virtual cell_t* evalProc(list_cell* args, Environment& env); };
+	struct mult_proc: public numerical_proc { virtual cell_t* evalProc(list_cell* args, Environment& env); };
+	struct div_proc : public numerical_proc { virtual cell_t* evalProc(list_cell* args, Environment& env); };
+	struct eq_proc 	: public numerical_proc { virtual cell_t* evalProc(list_cell* args, Environment& env); };
+	struct if_proc 		: public proc_cell  { virtual cell_t* evalProc(list_cell* args, Environment& env); };
+	struct quote_proc 	: public proc_cell  { virtual cell_t* evalProc(list_cell* args, Environment&); };
+	struct set_proc 	: public proc_cell  { virtual cell_t* evalProc(list_cell* args, Environment& env); };
+	struct define_proc 	: public proc_cell  { virtual cell_t* evalProc(list_cell* args, Environment& env); };
+	struct lambda_proc 	: public proc_cell  { virtual cell_t* evalProc(list_cell* args, Environment& env); };
+	struct begin_proc 	: public proc_cell  { virtual cell_t* evalProc(list_cell* args, Environment& env); };
+	struct let_proc 	: public proc_cell  { virtual cell_t* evalProc(list_cell* args, Environment& env); };
+	struct display_proc : public proc_cell  { virtual cell_t* evalProc(list_cell* args, Environment& env); };
+	struct exit_proc 	: public proc_cell  { virtual cell_t* evalProc(list_cell*, Environment&) { exit(0); } };
+	struct greater_proc : public proc_cell  { virtual cell_t* evalProc(list_cell* args, Environment& env); };
+	struct less_proc 	: public proc_cell  { virtual cell_t* evalProc(list_cell* args, Environment& env); };
+
+	void add_globals(Environment& env) {
+		env.mSymbolMap["+"] 		= new add_proc;
+		env.mSymbolMap["-"] 		= new sub_proc;
+		env.mSymbolMap["*"] 		= new mult_proc;
+		env.mSymbolMap["/"] 		= new div_proc;
+		env.mSymbolMap["="] 		= new eq_proc;
+		env.mSymbolMap[">"] 		= new greater_proc;
+		env.mSymbolMap["<"] 		= new less_proc;
+		env.mSymbolMap["if"] 		= new if_proc;
+		env.mSymbolMap["begin"] 	= new begin_proc;
+		env.mSymbolMap["define"] 	= new define_proc;
+		env.mSymbolMap["lambda"] 	= new lambda_proc;
+		env.mSymbolMap["quote"]		= new quote_proc;
+		env.mSymbolMap["set!"] 		= new set_proc;
+		env.mSymbolMap["let"] 		= new let_proc;
+		env.mSymbolMap["display"] 	= new display_proc;
+		env.mSymbolMap["exit"] 		= new exit_proc;
+	}
+
+	inline cell_t* add_proc::evalProc(list_cell* args, Environment& env) {
+		verifyCell(args, "+");
+		
+		cons_cell* currentCell = args;
+		double result = 0.0;
+		while(currentCell) {
+			result += getOpValue(env.eval(currentCell->car));
+			currentCell = currentCell->cdr;
+		}
+		
+		return new number_cell(result);
+	}
+
+#ifdef ELISP_TEST // {{{
+	TEST_CASE("prelude/add", "+") {
+		Environment testEnv;
+		add_globals(testEnv);
+		add_proc a;
+		cell_t* result;
+		number_cell* number;
+		
+		// One argument
+		cons_cell* oneArg = makeList({new number_cell(1.0)});
+		
+		result = a.evalProc(oneArg, testEnv);
+		REQUIRE(result->type == kCellType_number);
+		
+		number = static_cast<number_cell*>(result);
+		REQUIRE(number->value == 1);
+		
+		// Two arguments
+		cons_cell* twoArgs = makeList({
+			new number_cell(1.0),
+			new number_cell(1.0)});
+		
+		result = a.evalProc(twoArgs, testEnv);
+		REQUIRE(result->type == kCellType_number);
+		
+		number = static_cast<number_cell*>(result);
+		REQUIRE(number->value == 2);
+		
+		// Seven arguments
+		cons_cell* sevenArgs = makeList({
+			new number_cell(1.0),
+			new number_cell(1.0),
+			new number_cell(1.0),
+			new number_cell(1.0),
+			new number_cell(1.0),
+			new number_cell(1.0),
+			new number_cell(1.0)});
+		
+		result = a.evalProc(sevenArgs, testEnv);
+		REQUIRE(result->type == kCellType_number);
+		
+		number = static_cast<number_cell*>(result);
+		REQUIRE(number->value == 7);
+		
+		// Nested
+		cons_cell* nested = makeList({
+			new number_cell(1.0),
+			makeList({
+				new symbol_cell("+"),
+				new number_cell(1.0),
+				new number_cell(1.0)})});
+		
+		result = a.evalProc(nested, testEnv);
+		REQUIRE(result->type == kCellType_number);
+		
+		number = static_cast<number_cell*>(result);
+		REQUIRE(number->value == 3);
+	}
+#endif // }}}
+
+	inline cell_t* sub_proc::evalProc(list_cell* args, Environment& env) {
+		verifyCell(args, "-");
+
+		cons_cell* currentCell = args;
+
+		double result = getOpValue(env.eval(currentCell->car));
+		currentCell = currentCell->cdr;
+
+		if (!currentCell)
+			return new number_cell(-result);
+
+		while(currentCell) {
+			result -= getOpValue(env.eval(currentCell->car));
+			currentCell = currentCell->cdr;
+		}
+
+		return new number_cell(result); 
+	}
+
+#ifdef ELISP_TEST // {{{
+	TEST_CASE("prelude/sub", "-") {
+		Environment testEnv;
+		add_globals(testEnv);
+		sub_proc sub;
+		cell_t* result;
+		number_cell* number;
+		
+		// One argument
+		cons_cell* oneArg = makeList({new number_cell(1.0)});
+		
+		result = sub.evalProc(oneArg, testEnv);
+		REQUIRE(result->type == kCellType_number);
+		
+		number = static_cast<number_cell*>(result);
+		REQUIRE(number->value == -1);
+		
+		// Two arguments
+		cons_cell* twoArgs = makeList({
+			new number_cell(1.0),
+			new number_cell(1.0)});
+		
+		result = sub.evalProc(twoArgs, testEnv);
+		REQUIRE(result->type == kCellType_number);
+		
+		number = static_cast<number_cell*>(result);
+		REQUIRE(number->value == 0);
+		
+		// Seven arguments
+		cons_cell* sevenArgs = makeList({
+			new number_cell(10.0),
+			new number_cell(1.0),
+			new number_cell(1.0),
+			new number_cell(1.0),
+			new number_cell(1.0),
+			new number_cell(1.0),
+			new number_cell(1.0)});
+		
+		result = sub.evalProc(sevenArgs, testEnv);
+		REQUIRE(result->type == kCellType_number);
+		
+		number = static_cast<number_cell*>(result);
+		REQUIRE(number->value == 4);
+		
+		// Nested
+		cons_cell* nested = makeList({
+			new number_cell(5.0),
+			makeList({
+				new symbol_cell("-"),
+				new number_cell(2.0),
+				new number_cell(1.0)}),
+			new number_cell(1.0)});
+		
+		result = sub.evalProc(nested, testEnv);
+		REQUIRE(result->type == kCellType_number);
+		
+		number = static_cast<number_cell*>(result);
+		REQUIRE(number->value == 3);
+	}
+#endif // }}}
+
+	inline cell_t* mult_proc::evalProc(list_cell* args, Environment& env) {
+		verifyCell(args, "*");
+
+		double result = 1.0;
+		cons_cell* currentCell = args;
+		while(currentCell) {
+			result *= getOpValue(env.eval(currentCell->car));
+			currentCell = currentCell->cdr;
+		}
+
+		return new number_cell(result); 
+	}
+
+#ifdef ELISP_TEST // {{{
+	TEST_CASE("prelude/mult", "*") {
+		Environment testEnv;
+		add_globals(testEnv);
+		mult_proc proc;
+		cell_t* result;
+		number_cell* number;
+		
+		// Two arguments
+		cons_cell* twoArgs = makeList({
+			new number_cell(1.0),
+			new number_cell(2.0)});
+		
+		result = proc.evalProc(twoArgs, testEnv);
+		REQUIRE(result->type == kCellType_number);
+		
+		number = static_cast<number_cell*>(result);
+		REQUIRE(number->value == 2);
+		
+		// Seven arguments
+		cons_cell* sevenArgs = makeList({
+			new number_cell(10.0),
+			new number_cell(2.0),
+			new number_cell(1.0),
+			new number_cell(-1.0),
+			new number_cell(0.5),
+			new number_cell(10.0),
+			new number_cell(-5.0)});
+		
+		result = proc.evalProc(sevenArgs, testEnv);
+		REQUIRE(result->type == kCellType_number);
+		
+		number = static_cast<number_cell*>(result);
+		REQUIRE(number->value == 500);
+		
+		// Nested
+		cons_cell* nested = makeList({
+			new number_cell(2.0),
+			makeList({
+				new symbol_cell("*"),
+				new number_cell(2.0),
+				new number_cell(3.0)}),
+			new number_cell(2.0)});
+		
+		result = proc.evalProc(nested, testEnv);
+		REQUIRE(result->type == kCellType_number);
+		
+		number = static_cast<number_cell*>(result);
+		REQUIRE(number->value == 24);
+	}
+#endif // }}}
+
+	inline cell_t* div_proc::evalProc(list_cell* args, Environment& env) {
+		verifyCell(args, "/");
+
+		cons_cell* currentCell = args;
+		double value = getOpValue(env.eval(currentCell->car));
+		currentCell = currentCell->cdr;
+
+		if (!currentCell)
+			return new number_cell(1.0 / value);
+
+		while (currentCell) {
+			value /= getOpValue(env.eval(currentCell->car));
+			currentCell = currentCell->cdr;
+		}
+
+		return new number_cell(value);
+	}
+
+#ifdef ELISP_TEST // {{{
+	TEST_CASE("prelude/div", "/") {
+		Environment testEnv;
+		add_globals(testEnv);
+		div_proc proc;
+		cell_t* result;
+		number_cell* number;
+		
+		// One arguments
+		cons_cell* oneArgs = makeList({new number_cell(2.0)});
+		
+		result = proc.evalProc(oneArgs, testEnv);
+		REQUIRE(result->type == kCellType_number);
+		
+		number = static_cast<number_cell*>(result);
+		REQUIRE(number->value == 0.5);
+
+		// Two arguments
+		cons_cell* twoArgs = makeList({
+			new number_cell(4.0),
+			new number_cell(2.0)});
+		
+		result = proc.evalProc(twoArgs, testEnv);
+		REQUIRE(result->type == kCellType_number);
+		
+		number = static_cast<number_cell*>(result);
+		REQUIRE(number->value == 2);
+		
+		// Seven arguments
+		cons_cell* sevenArgs = makeList({
+			new number_cell(10.0),
+			new number_cell(2.0),
+			new number_cell(2.5)});
+		
+		result = proc.evalProc(sevenArgs, testEnv);
+		REQUIRE(result->type == kCellType_number);
+		
+		number = static_cast<number_cell*>(result);
+		REQUIRE(number->value == 2);
+		
+		// Nested
+		cons_cell* nested = makeList({
+			new number_cell(4.0),
+			makeList({
+				new symbol_cell("/"),
+				new number_cell(2.0),
+				new number_cell(1.0)}),
+			new number_cell(2.0)});
+		
+		result = proc.evalProc(nested, testEnv);
+		REQUIRE(result->type == kCellType_number);
+		
+		number = static_cast<number_cell*>(result);
+		REQUIRE(number->value == 1);
+	}
+#endif // }}}
+
+	inline cell_t* eq_proc::evalProc(list_cell* args, Environment& env) {
+		verifyCell(args, "=");
+
+		cons_cell* currentCell = args;
+
+		double value = getOpValue(env.eval(currentCell->car));
+		currentCell = currentCell->cdr;
+		verifyCell(currentCell, "=");
+
+		// No early out to ensure all args are numbers.
+		bool result = true;
+		while (currentCell) {
+			result = result && (value == getOpValue(env.eval(currentCell->car)));
+			currentCell = currentCell->cdr;
+		}
+		return new bool_cell(result);
+	}
+
+#ifdef ELISP_TEST // {{{
+	TEST_CASE("prelude/eq", "=") {
+		Environment testEnv;
+		add_globals(testEnv);
+		eq_proc proc;
+		cell_t* result;
+
+		// Two arguments
+		cons_cell* twoArgs = makeList({
+			new number_cell(2.0),
+			new number_cell(2.0)});
+		
+		result = proc.evalProc(twoArgs, testEnv);
+		REQUIRE(result->type == kCellType_bool);
+		REQUIRE(cell_to_bool(result));
+		
+		// Seven arguments
+		cons_cell* sevenArgs = makeList({
+			new number_cell(-0.0),
+			new number_cell(0.0),
+			new number_cell(0.0)});
+		
+		result = proc.evalProc(sevenArgs, testEnv);
+		REQUIRE(result->type == kCellType_bool);
+		REQUIRE(cell_to_bool(result));
+		
+		// Nested
+		cons_cell* nested = makeList({
+			new number_cell(4.0),
+			makeList({
+				new symbol_cell("*"),
+				new number_cell(2.0),
+				new number_cell(2.0)})});
+		
+		result = proc.evalProc(nested, testEnv);
+		REQUIRE(result->type == kCellType_bool);
+		REQUIRE(cell_to_bool(result));
+	}\
+
+#endif // }}}
+
+	inline cell_t* if_proc::evalProc(list_cell* args, Environment& env) {
+		verifyCell(args, "if");
+
+		cons_cell* currentCell = args;
+		
+		cell_t* test = currentCell->car;
+		currentCell = currentCell->cdr;
+		verifyCell(currentCell, "if");
+
+		cell_t* conseq 	= currentCell->car;
+		currentCell = currentCell->cdr;
+		verifyCell(currentCell, "if");
+
+		cell_t* alt	= currentCell->car;
+		currentCell = currentCell->cdr;
+
+		trueOrDie(currentCell == empty_list, "Too many arguments specified to \"if\"");
+
+		return env.eval((cell_to_bool(env.eval(test)) ? conseq : alt));
+	}
+
+#ifdef ELISP_TEST // {{{
+	TEST_CASE("prelude/if", "if") {
+		Environment testEnv;
+		add_globals(testEnv);
+		if_proc proc;
+		cell_t* result;
+		number_cell* number;
+		cons_cell* args;
+
+		args = makeList({
+				makeList({
+					new symbol_cell("="),
+					new number_cell(1.0),
+					new number_cell(1.0)}),
+				new number_cell(1.0),
+				new number_cell(2.0)});
+
+		result = proc.evalProc(args, testEnv);
+		REQUIRE(result->type == kCellType_number);
+		number = static_cast<number_cell*>(result);
+		REQUIRE(number->value == 1.0);
+
+		args = makeList({
+				makeList({
+					new symbol_cell("="),
+					new number_cell(2.0),
+					new number_cell(1.0)}),
+				new number_cell(1.0),
+				new number_cell(2.0)});
+
+		result = proc.evalProc(args, testEnv);
+		REQUIRE(result->type == kCellType_number);
+		number = static_cast<number_cell*>(result);
+		REQUIRE(number->value == 2.0);
+
+		args = makeList({
+				new bool_cell(false),
+				new number_cell(1.0),
+				new number_cell(2.0)});
+
+		result = proc.evalProc(args, testEnv);
+		REQUIRE(result->type == kCellType_number);
+		number = static_cast<number_cell*>(result);
+		REQUIRE(number->value == 2.0);
+
+		args = makeList({
+				new bool_cell(empty_list),
+				new number_cell(1.0),
+				new number_cell(2.0)});
+
+		result = proc.evalProc(args, testEnv);
+		REQUIRE(result->type == kCellType_number);
+		number = static_cast<number_cell*>(result);
+		REQUIRE(number->value == 2.0);
+	}
+#endif // }}}
+
+	inline cell_t* quote_proc::evalProc(list_cell* args, Environment&) {
+		verifyCell(args, "quote");
+		cell_t* value = args->car;
+		trueOrDie(!args->cdr, "Too many arguments specified to \"quote\"");
+		return value;
+	}
+
+#ifdef ELISP_TEST // {{{
+	TEST_CASE("prelude/quote", "quote") {
+		Environment testEnv;
+		add_globals(testEnv);
+		quote_proc proc;
+
+		cons_cell* args = makeList({makeList({
+			new symbol_cell("="),
+			new number_cell(1.0),
+			new number_cell(1.0)})});
+
+		cell_t* result = proc.evalProc(args, testEnv);
+		REQUIRE(result->type == kCellType_cons);
+		cons_cell* cons = static_cast<cons_cell*>(result);
+		REQUIRE(cons->car->type == kCellType_symbol);
+		symbol_cell* equalSymbol = static_cast<symbol_cell*>(cons->car);
+		REQUIRE(equalSymbol->identifier == "=");
+	}
+#endif // }}}
+
+	inline cell_t* set_proc::evalProc(list_cell* args, Environment& env) {
+		verifyCell(args, "set!");
+		verifyCell(args->cdr, "set!");
+
+		cell_t* var = args->car;
+		cell_t* exp = args->cdr->car;
+
+		trueOrDie(var->type == kCellType_symbol, "set! requires a symbol as its first argument");
+		string& id = static_cast<symbol_cell*>(var)->identifier;
+		Environment* e = env.find(id);
+		trueOrDie(e, "Cannot set undefined variable " + id);
+
+		e->mSymbolMap[id] = env.eval(exp);
+		return empty_list;
+	}
+
+#ifdef ELISP_TEST // {{{
+	TEST_CASE("prelude/set!", "set!") {
+		Environment testEnv;
+		add_globals(testEnv);
+		testEnv.mSymbolMap["derp"] = new number_cell(1);
+		set_proc proc;
+
+		cons_cell* args = makeList({new symbol_cell("derp"), new number_cell(2.0)});
+
+		proc.evalProc(args, testEnv);
+		REQUIRE(testEnv.find("derp") == &testEnv);
+		cell_t* derpCell = testEnv.get("derp");
+		REQUIRE(derpCell->type == kCellType_number);
+		number_cell* num = static_cast<number_cell*>(derpCell);
+		REQUIRE(num->value == 2);
+	}
+#endif // }}}
+
+	inline cell_t* define_proc::evalProc(list_cell* args, Environment& env) {
+		// Make sure we got enough arguments.
+		verifyCell(args, "define");
+		verifyCell(args->cdr, "define");
+
+		cell_t* firstArgument = args->car;
+		trueOrDie(firstArgument != empty_list, "No name specified for given function definition.");
+
+		if (firstArgument->type == kCellType_cons) {
+			// Defining a function.
+
+			// Get the name of the function we're defining.
+			cons_cell* currentParameter = static_cast<cons_cell*>(firstArgument);
+			trueOrDie(currentParameter->car->type == kCellType_symbol, "Function name in define declaration must be a symbol.");
+			string functionName = static_cast<symbol_cell*>(currentParameter->car)->identifier;
+
+			// Construct a lambda and bind it to the function name.
+			lambda_cell* lambda = new lambda_cell(&env);
+
+			// Get the parameter name list if there are any specified.
+			currentParameter = currentParameter->cdr;
+			while (currentParameter) {
+				trueOrDie(currentParameter->car->type == kCellType_symbol,
+						"Only symbols can be in the parameter list for a function definition.");
+				symbol_cell* parameter = static_cast<symbol_cell*>(currentParameter->car);
+				lambda->mParameters.push_back(parameter);
+				currentParameter = currentParameter->cdr;
+			}
+
+			// Get all the body expressions.
+			cons_cell* currentBodyExpr = args->cdr;
+			trueOrDie(currentBodyExpr, "At least one body expression is required when defining a function.");
+			while (currentBodyExpr) {
+				lambda->mBodyExpressions.push_back(currentBodyExpr->car);
+				currentBodyExpr = currentBodyExpr->cdr;
+			}
+
+			env.mSymbolMap[functionName] = lambda;
+		} else if (firstArgument->type == kCellType_symbol) {
+			// Defining a variable binding.
+			string varName = static_cast<symbol_cell*>(firstArgument)->identifier;
+			cell_t* exp = args->cdr->car;
+
+			trueOrDie(args->cdr->cdr == empty_list, "define expects only 2 arguments when defining a variable binding.");
+
+			env.mSymbolMap[varName] = env.eval(exp);
+		} else {
+			die("Invalid first parameter passed to define.  Expected either a symbol or a list of symbols.");
+		}
+		return empty_list;
+	}
+
+#ifdef ELISP_TEST // {{{
+	TEST_CASE("prelude/define", "define") {
+		Environment testEnv;
+		add_globals(testEnv);
+		define_proc proc;
+
+		cons_cell* args = makeList({new symbol_cell("derp"), new number_cell(2.0)});
+
+		proc.evalProc(args, testEnv);
+		REQUIRE(testEnv.find("derp") == &testEnv);
+		cell_t* derpCell = testEnv.get("derp");
+		REQUIRE(derpCell->type == kCellType_number);
+		number_cell* num = static_cast<number_cell*>(derpCell);
+		REQUIRE(num->value == 2);
+	}
+#endif // }}}
+
+
+	inline cell_t* lambda_proc::evalProc(list_cell* args, Environment& env) {
+		trueOrDie(args != empty_list, "Procedure 'lambda' requires at least 2 arguments, 0 given");
+		cons_cell* currentCell = args;
+
+
+		// Get the paramter list 
+		trueOrDie(currentCell->car->type == kCellType_cons, "Second argument to lambda must be a list");
+		cons_cell* parameters = static_cast<cons_cell*>(currentCell->car);
+
+		// Move past the list of parameters.
+		trueOrDie(currentCell->cdr != empty_list, "Procedure 'lambda' requires at least 2 arguments. 1 given.");
+		currentCell = currentCell->cdr;
+
+		// Save the list of body statements.
+		cons_cell* listOfBodyStatements = currentCell;
+
+		// Create a lambda and return it.
+		lambda_cell* cell = new lambda_cell(&env);
+		
+		// Add the parameters.
+		currentCell = parameters;
+		while (currentCell) {
+			trueOrDie(currentCell->car->type == kCellType_symbol, "Expected only symbols in lambda parameter list.");
+			cell->mParameters.push_back(static_cast<symbol_cell*>(currentCell->car));
+			currentCell = currentCell->cdr;
+		}
+
+		// Add the body expressions.
+		currentCell = listOfBodyStatements;
+		while (currentCell) {
+			cell->mBodyExpressions.push_back(currentCell->car);
+			currentCell = currentCell->cdr;
+		}
+
+		return cell;
+	}
+
+	inline cell_t* begin_proc::evalProc(list_cell* args, Environment& env) {
+		verifyCell(args, "begin");
+
+		cons_cell* currentCell = args;
+		cell_t* value = empty_list;
+		while (currentCell) {
+			value = env.eval(currentCell->car);
+			currentCell = currentCell->cdr;
+		}
+		return value;
+	}
+
+	inline cell_t* let_proc::evalProc(list_cell* args, Environment& env) {
+		verifyCell(args, "let");
+
+		cons_cell* currentCell = args;
+		trueOrDie(currentCell->car->type == kCellType_cons, "The second argument to \"let\" must be a list of lists.");
+		list_cell* bindings = static_cast<list_cell*>(currentCell->car);
+
+		Environment* newEnv = new Environment(env);
+
+		cons_cell* currentBinding = bindings;
+		while (currentBinding) {
+			trueOrDie(currentBinding->car->type == kCellType_cons, "The second argument to \"let\" must be a list of lists.");
+			cons_cell* currentBindingPair = static_cast<cons_cell*>(currentBinding->car);
+
+			trueOrDie(currentBindingPair->car->type == kCellType_symbol, "First argument in a binding expression must be a symbol");
+
+			symbol_cell* var = static_cast<symbol_cell*>(currentBindingPair->car);
+			cell_t* exp = currentBindingPair->cdr->car;
+
+			trueOrDie(!currentBindingPair->cdr->cdr, "Too many arguments in binding expression.");
+
+			newEnv->mSymbolMap[var->identifier] = env.eval(exp);
+
+			currentBinding = currentBinding->cdr;
+		}
+		currentCell = currentCell->cdr;
+
+		cell_t* returnVal = empty_list;
+		while (currentCell) {
+			returnVal = newEnv->eval(currentCell->car);
+			currentCell = currentCell->cdr;
+		}
+		return returnVal;
+	}
+
+	inline cell_t* display_proc::evalProc(list_cell* args, Environment& env) {
+		cons_cell* currentArgument = args;
+		for (; currentArgument; currentArgument = currentArgument->cdr) 
+			std::cout << env.eval(currentArgument->car) << std::endl;
+		return empty_list;
+	}
+
+	inline cell_t* greater_proc::evalProc(list_cell* args, Environment& env) {
+		trueOrDie(args && args->cdr, "Function > requires at least two arguments");
+
+		cons_cell* currentArgument = args;
+
+		cell_t* leftCell = env.eval(currentArgument->car);
+		cell_t* rightCell;
+
+		trueOrDie(leftCell->type == kCellType_number, "Function > accepts only numerical arguments");
+
+		currentArgument = currentArgument->cdr;
+
+		bool result = true;
+		while(currentArgument) {
+			rightCell = env.eval(currentArgument->car);
+			trueOrDie(rightCell->type == kCellType_number, "Function > accepts only numerical arguments");
+
+			double leftVal = static_cast<number_cell*>(leftCell)->value;
+			double rightVal = static_cast<number_cell*>(rightCell)->value;
+
+			result = result && (leftVal > rightVal);
+			if (!result)
+				break;
+
+			leftCell = rightCell;
+
+			currentArgument = currentArgument->cdr;
+		}
+
+		return new bool_cell(result);
+	}
+
+	inline cell_t* less_proc::evalProc(list_cell* args, Environment& env) {
+		trueOrDie(args && args->cdr, "Function < requires at least two arguments");
+
+		cons_cell* currentArgument = args;
+
+		cell_t* leftCell = env.eval(currentArgument->car);
+		cell_t* rightCell;
+
+		trueOrDie(leftCell->type == kCellType_number, "Function < accepts only numerical arguments");
+
+		currentArgument = currentArgument->cdr;
+
+		bool result = true;
+		while(currentArgument) {
+			double leftVal = static_cast<number_cell*>(leftCell)->value;
+
+			rightCell = env.eval(currentArgument->car);
+			trueOrDie(rightCell->type == kCellType_number, "Function < accepts only numerical arguments");
+			double rightVal = static_cast<number_cell*>(rightCell)->value;
+
+			result = result && (leftVal < rightVal);
+			if (!result)
+				break;
+
+			leftCell = rightCell;
+
+			currentArgument = currentArgument->cdr;
+		}
+
+		return new bool_cell(result);
+	}
+
+	TokenStream::TokenStream(std::istream& stream) : is(stream) {}
+
+	std::string TokenStream::nextToken() {
+		if (line.empty() and !std::getline(is, line))
+			return "";
+
+		std::smatch match;
+		if (std::regex_search(line, match, reg)) {
+			trueOrDie(match.prefix().str() == "", "unknown characters: " + match.prefix().str());
+
+			std::string matchStr = match[1].str();
+			line = match.suffix().str();
+			if (matchStr.empty() or matchStr[0] == ';')
+				return nextToken();
+			else
+				return matchStr;
+				
+		} else {
+			trueOrDie(false, "Unknown characters: " + line);
+		}
+		return "";
+	}
+
+	/**
+	 * Given a string token, creates the atom it represents
+	 */
+	cell_t* atom(const std::string& token) {
+		if (token[0] == '#') {
+			const std::string::value_type& boolid = token[1];
+			bool val = (boolid == 't' || boolid == 'T');
+			trueOrDie((val || boolid == 'f' || boolid == 'F') && token.size() == 2, "Unknown identifier " + token);
+			return new bool_cell(val);
+		} else if (token[0] == '"') {
+			return new string_cell(token);
+		} else if (isNumber(token)) {
+			std::istringstream iss(token);
+			double value = 0.0;
+			iss >> value;
+			number_cell* n = new number_cell(value);
+			n->valueString = token;
+			return n;
+		} else {
+			return new symbol_cell(token);
+		}
+	}
+
+	/**
+	 * Returns a list of top-level expressions.
+	 */
+	std::vector<cell_t*> read(TokenStream& stream) {
+		std::vector<std::vector<cell_t*>> exprStack; // The current stack of nested list expressions.
+		exprStack.emplace_back(); // top-level scope
+
+		for (std::string token = stream.nextToken(); !token.empty(); token = stream.nextToken()) {
+			if (token == "(") {
+				// Push a new scope onto the stack.
+				exprStack.emplace_back();
+			} else if (token == ")") {
+				// Pop the current scope off the stack and add it as a list to its parent scope.
+				trueOrDie(exprStack.size() > 1, "Unexpected ) while reading");
+				cell_t* listexpr = makeList(exprStack.back());
+				exprStack.pop_back();
+				exprStack.back().push_back(listexpr);
+			} else {
+				exprStack.back().push_back(atom(token));
+			}
+		}
+
+		trueOrDie(exprStack.size() == 1, "Unexpected EOF while reading");
+		return exprStack.back();
+	}
+
+	/**
+	 * Returns a list of top-level expressions.
+	 */
+	std::vector<cell_t*> read(string s) {
+		std::istringstream iss(s);
+		TokenStream tokStream(iss);
+		return read(tokStream);
+	}
+
+	std::string to_string(cell_t* exp) {
+		std::ostringstream ss;
+		if (exp)
+			ss << exp;
+		else
+			ss << "'()";
+		return ss.str();
+	}
+
+	Program::Program() { add_globals(global_env); }
+
+	/// Eval a string of code and give the result as a string.
+	inline string Program::runCode(string inCode) {
+		std::istringstream iss(inCode);
+		TokenStream tokStream(iss);
+		return runCode(tokStream);
+	}
+
+	/// Given a stream, read and eval the code read from the stream.
+	inline string Program::runCode(TokenStream& stream) {
+		using std::cerr;
+		using std::endl;
+
+		try {
+			cell_t* result = nullptr;
+			for (auto expr : read(stream))
+				result = global_env.eval(expr);
+			return to_string(result);
+		} catch (const std::logic_error& e) {
+			// logic_error's are thrown for invalid code.
+			cerr << "[ERROR]\t" << e.what() << endl;
+		} catch (const std::exception& e) {
+			// runtime_error's are internal errors at no fault of the user.
+			cerr << endl << endl << "--[SYSTEM ERROR]--" << endl << endl << e.what() << endl << endl;
+		} catch (...) {
+			cerr << endl << endl << "--[SYSTEM ERROR]--" << endl << endl << "An unkown error occured" << endl << endl;
+		}
+		return "";
+	}
+
+	/// Read eval print loop.
+	inline void Program::repl(string prompt) {
+		using std::cout;
+		using std::endl;
+
+		while (true) {
+			cout << prompt;
+
+			string raw_input;
+			if (!std::getline(std::cin, raw_input)) {
+				cout << endl << endl;
+				break;
+			}
+
+			if (raw_input.empty() or raw_input.find_first_not_of(" \t") == string::npos)
+				continue;
+			cout << runCode(raw_input) << endl;
+		}
+	}
+
+}
