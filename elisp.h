@@ -21,7 +21,30 @@ namespace elisp {
 	void die(string message) { throw std::logic_error(message); }
 	void trueOrDie(bool condition, string message) { if (!condition) die(message); }
 
-	// Data types in elisp
+	struct cell_t;
+
+	////////////////////////////////////////////////////////////////////////////////
+	// Environment
+	class Environment {
+	public:
+		Environment();
+		Environment(Environment& inOuter);
+		Environment(Environment* inOuter);
+
+		Environment* find(const string& var);
+		cell_t* get(const string& var);
+		cell_t* eval(cell_t* x); 
+
+	private:
+		Environment* outer;
+
+	public:
+		std::map<string, cell_t*> mSymbolMap;
+	};
+	
+	////////////////////////////////////////////////////////////////////////////////
+	// Cell types
+	/// Data types in elisp
 	enum eCellType {
 		kCellType_bool,
 		kCellType_number,
@@ -45,21 +68,6 @@ namespace elisp {
 		cell_t(eCellType inType);
 	};
 
-	class Environment {
-		Environment* outer;
-	public:
-		std::map<string, cell_t*> mSymbolMap;
-
-		Environment();
-		Environment(Environment& inOuter);
-		Environment(Environment* inOuter);
-
-		Environment* find(const string& var);
-
-		cell_t* get(const string& var);
-
-		cell_t* eval(cell_t* x); 
-	};
 
 	struct bool_cell : public cell_t {
 		bool value;
@@ -114,7 +122,76 @@ namespace elisp {
 		proc_cell() :cell_t(kCellType_procedure) {}
 	};
 
+	struct lambda_cell : public cell_t {
+		Environment *env;
+		lambda_cell(Environment* outerEnv) :cell_t(kCellType_lambda), env(outerEnv) {}
 
+		virtual cell_t* eval(list_cell* args);
+		virtual operator string() {
+			std::ostringstream ss;
+			ss << "(lambda (";
+
+			// parameters
+			vector<symbol_cell*>::const_iterator parameterIter = mParameters.begin();
+			vector<symbol_cell*>::const_iterator parametersEnd = mParameters.end();
+			while (parameterIter != parametersEnd) {
+				ss << (*parameterIter);
+				++parameterIter;
+
+				if (parameterIter == parametersEnd)
+					break;
+
+				ss << " ";
+			}
+			ss << ") ";
+
+
+			// body expressions
+			vector<cell_t*>::const_iterator bodyExprIter = mBodyExpressions.begin();
+			vector<cell_t*>::const_iterator bodyExprsEnd = mBodyExpressions.end();
+			while (bodyExprIter != bodyExprsEnd) {
+				ss << (*bodyExprIter);
+				++bodyExprIter;
+
+				if (bodyExprIter == bodyExprsEnd)
+					break;
+
+				ss << " ";
+			}
+			ss << ")";
+			
+			return ss.str();
+		}
+
+		vector<symbol_cell*> 	mParameters; // list of 0 or more arguments
+		vector<cell_t*> 	mBodyExpressions; // list of 1 or more body statements.
+	};
+
+	////////////////////////////////////////////////////////////////////////////////
+	// Util.h
+	bool cell_to_bool(cell_t* cell);
+
+	/**
+	 * Replaces all occurances of \p from with \p to in \p str
+	 */
+	void replaceAll(string& str, const string& from, const string& to);
+
+	/**
+	 * Returns \c true if \p inValue is a string representation of a number, \c false otherwise.
+	 */
+	bool isNumber(string inValue);
+
+	/**
+	 * A helper that creates a lisp list given a vector of the list's contents.
+	 *
+	 * A convenient use-case:
+	 * cons_cell* list_cell = makeList({ new symbol_cell("+"), new number_cell(1), new number_cell(2)});
+	 */
+	cons_cell* makeList(std::vector<cell_t*> list);
+
+
+	////////////////////////////////////////////////////////////////////////////////
+	// TokenStream
 	/**
 	 * A wrapper around std::istream that allows you to grab individual tokens lazily.
 	 */
@@ -140,6 +217,8 @@ namespace elisp {
 				R"([^\s('"`,;)]*))" // identifiers
 			")");
 
+	////////////////////////////////////////////////////////////////////////////////
+	// Program
 	class Program {
 		Environment global_env;
 

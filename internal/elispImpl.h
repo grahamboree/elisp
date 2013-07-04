@@ -1,3 +1,4 @@
+// vim: set foldmethod=marker:
 /*
  *
  */
@@ -5,6 +6,7 @@
 #pragma once
 
 namespace elisp {
+	// Cells {{{
 	inline cell_t::cell_t(eCellType inType)
 	: type(inType)
 	{
@@ -31,54 +33,6 @@ namespace elisp {
 		trueOrDie(inCell, "Insufficient arguments provided to " + methodName + ".");
 	}
 
-	////////////////////////////////////////////////////////////////////////////////
-	// Lambdas
-	struct lambda_cell : public cell_t {
-		Environment *env;
-		lambda_cell(Environment* outerEnv) :cell_t(kCellType_lambda), env(outerEnv) {}
-
-		virtual cell_t* eval(list_cell* args);
-		virtual operator string() {
-			std::ostringstream ss;
-			ss << "(lambda (";
-
-			// parameters
-			vector<symbol_cell*>::const_iterator parameterIter = mParameters.begin();
-			vector<symbol_cell*>::const_iterator parametersEnd = mParameters.end();
-			while (parameterIter != parametersEnd) {
-				ss << (*parameterIter);
-				++parameterIter;
-
-				if (parameterIter == parametersEnd)
-					break;
-
-				ss << " ";
-			}
-			ss << ") ";
-
-
-			// body expressions
-			vector<cell_t*>::const_iterator bodyExprIter = mBodyExpressions.begin();
-			vector<cell_t*>::const_iterator bodyExprsEnd = mBodyExpressions.end();
-			while (bodyExprIter != bodyExprsEnd) {
-				ss << (*bodyExprIter);
-				++bodyExprIter;
-
-				if (bodyExprIter == bodyExprsEnd)
-					break;
-
-				ss << " ";
-			}
-			ss << ")";
-			
-			return ss.str();
-		}
-
-		vector<symbol_cell*> 	mParameters; // list of 0 or more arguments
-		vector<cell_t*> 	mBodyExpressions; // list of 1 or more body statements.
-	};
-
-	////////////////////////////////////////////////////////////////////////////////
 	cons_cell::cons_cell(cell_t* inCar, cons_cell* inCdr)
 	: cell_t(kCellType_cons)
 	, car(inCar)
@@ -101,14 +55,35 @@ namespace elisp {
 		return ss.str();
 	}
 
+	cell_t* lambda_cell::eval(list_cell* args) {
+		Environment* newEnv = new Environment(env);
+
+		// Match the arguments to the parameters.
+		vector<symbol_cell*>::const_iterator parameterIter = mParameters.begin();
+		vector<symbol_cell*>::const_iterator parametersEnd = mParameters.end();
+		for (; parameterIter != parametersEnd; ++parameterIter) {
+			trueOrDie(args != empty_list, "insufficient arguments provided to function");
+			newEnv->mSymbolMap[(*parameterIter)->identifier] = env->eval(args->car);
+			args = args->cdr;
+		}
+
+		// Evaluate the body expressions with the new environment.  Return the result of the last body expression.
+		cell_t* returnVal;
+		vector<cell_t*>::iterator bodyExprIter = mBodyExpressions.begin();
+		vector<cell_t*>::iterator bodyExprsEnd = mBodyExpressions.end();
+		for (; bodyExprIter != bodyExprsEnd; ++bodyExprIter)
+			returnVal = newEnv->eval(*bodyExprIter);
+
+		return returnVal;
+	}
+	// }}}
+
 	////////////////////////////////////////////////////////////////////////////////
+	// Util {{{
 	bool cell_to_bool(cell_t* cell) {
 		return (cell != empty_list and (cell->type != kCellType_bool || static_cast<bool_cell*>(cell)->value));
 	}
 
-	/**
-	 * Replaces all occurances of \p from with \p to in \p str
-	 */
 	void replaceAll(string& str, const string& from, const string& to) {
 		string::size_type pos = 0;
 		while((pos = str.find(from, pos)) != string::npos) {
@@ -117,9 +92,6 @@ namespace elisp {
 		}
 	}
 
-	/**
-	 * Returns \c true if \p inValue is a string representation of a number, \c false otherwise.
-	 */
 	bool isNumber(string inValue) {
 		string::const_iterator it = inValue.begin();
 		bool hasRadix = false;
@@ -138,12 +110,6 @@ namespace elisp {
 		return false;
 	}
 
-	/**
-	 * A helper that creates a lisp list given a vector of the list's contents.
-	 *
-	 * A convenient use-case:
-	 * cons_cell* list_cell = makeList({ new symbol_cell("+"), new number_cell(1), new number_cell(2)});
-	 */
 	cons_cell* makeList(std::vector<cell_t*> list) {
 		cons_cell* result = nullptr;
 		typedef vector<cell_t*>::const_reverse_iterator cri;
@@ -151,7 +117,9 @@ namespace elisp {
 			result = new cons_cell(*iter, result);
 		return result;
 	}
-
+	// }}}
+	
+	// Environment {{{
 	inline Environment::Environment() :outer(NULL) {}
 	inline Environment::Environment(Environment& inOuter) :outer(&inOuter) {}
 	inline Environment::Environment(Environment* inOuter) :outer(inOuter) {}
@@ -201,30 +169,9 @@ namespace elisp {
 		}
 		return x;
 	}
+	// }}}
 
-	////////////////////////////////////////////////////////////////////////////////
-	cell_t* lambda_cell::eval(list_cell* args) {
-		Environment* newEnv = new Environment(env);
-
-		// Match the arguments to the parameters.
-		vector<symbol_cell*>::const_iterator parameterIter = mParameters.begin();
-		vector<symbol_cell*>::const_iterator parametersEnd = mParameters.end();
-		for (; parameterIter != parametersEnd; ++parameterIter) {
-			trueOrDie(args != empty_list, "insufficient arguments provided to function");
-			newEnv->mSymbolMap[(*parameterIter)->identifier] = env->eval(args->car);
-			args = args->cdr;
-		}
-
-		// Evaluate the body expressions with the new environment.  Return the result of the last body expression.
-		cell_t* returnVal;
-		vector<cell_t*>::iterator bodyExprIter = mBodyExpressions.begin();
-		vector<cell_t*>::iterator bodyExprsEnd = mBodyExpressions.end();
-		for (; bodyExprIter != bodyExprsEnd; ++bodyExprIter)
-			returnVal = newEnv->eval(*bodyExprIter);
-
-		return returnVal;
-	}
-
+	// Prelude {{{
 	struct numerical_proc : public proc_cell {
 	protected:
 		double getOpValue(cell_t* inOp) {
@@ -984,7 +931,9 @@ namespace elisp {
 
 		return new bool_cell(result);
 	}
+	// }}}
 
+	// TokenStream, writer, and the reader {{{
 	TokenStream::TokenStream(std::istream& stream) : is(stream) {}
 
 	std::string TokenStream::nextToken() {
@@ -1074,7 +1023,9 @@ namespace elisp {
 			ss << "'()";
 		return ss.str();
 	}
+	// }}}
 
+	// Program {{{
 	Program::Program() { add_globals(global_env); }
 
 	/// Eval a string of code and give the result as a string.
@@ -1125,5 +1076,6 @@ namespace elisp {
 			cout << runCode(raw_input) << endl;
 		}
 	}
-
+	// }}}
 }
+
