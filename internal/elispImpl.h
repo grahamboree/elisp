@@ -55,7 +55,7 @@ namespace elisp {
 		return ss.str();
 	}
 
-	cell_t* lambda_cell::eval(list_cell* args) {
+	cell_t* lambda_cell::eval(list_cell* args, Environment& currentEnv) {
 		Environment* newEnv = new Environment(env);
 
 		// Match the arguments to the parameters.
@@ -63,7 +63,7 @@ namespace elisp {
 		vector<symbol_cell*>::const_iterator parametersEnd = mParameters.end();
 		for (; parameterIter != parametersEnd; ++parameterIter) {
 			trueOrDie(args != empty_list, "insufficient arguments provided to function");
-			newEnv->mSymbolMap[(*parameterIter)->identifier] = env->eval(args->car);
+			newEnv->mSymbolMap[(*parameterIter)->identifier] = currentEnv.eval(args->car);
 			args = args->cdr;
 		}
 
@@ -163,7 +163,7 @@ namespace elisp {
 				return static_cast<proc_cell*>(callable)->evalProc(listcell->cdr, *this);
 			} else if (callable->type == kCellType_lambda) { 
 				// Eval the lambda with the rest of the arguments.
-				return static_cast<lambda_cell*>(callable)->eval(listcell->cdr);
+				return static_cast<lambda_cell*>(callable)->eval(listcell->cdr, *this);
 			}
 			die("Expected procedure or lambda as first element in an sexpression.");
 		}

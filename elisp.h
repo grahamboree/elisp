@@ -126,7 +126,7 @@ namespace elisp {
 		Environment *env;
 		lambda_cell(Environment* outerEnv) :cell_t(kCellType_lambda), env(outerEnv) {}
 
-		virtual cell_t* eval(list_cell* args);
+		virtual cell_t* eval(list_cell* args, Environment& currentEnv);
 		virtual operator string() {
 			std::ostringstream ss;
 			ss << "(lambda (";
