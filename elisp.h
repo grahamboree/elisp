@@ -113,9 +113,7 @@ namespace elisp {
 
 	struct proc_cell : public cell_t {
 		virtual cell_t* evalProc(list_cell* args, Environment& env) = 0;
-
 		virtual operator string() { return "#procedure"; }
-
 	protected:
 		void verifyCell(cons_cell* inCell, string methodName);
 
@@ -127,41 +125,7 @@ namespace elisp {
 		lambda_cell(Environment* outerEnv) :cell_t(kCellType_lambda), env(outerEnv) {}
 
 		virtual cell_t* eval(list_cell* args, Environment& currentEnv);
-		virtual operator string() {
-			std::ostringstream ss;
-			ss << "(lambda (";
-
-			// parameters
-			vector<symbol_cell*>::const_iterator parameterIter = mParameters.begin();
-			vector<symbol_cell*>::const_iterator parametersEnd = mParameters.end();
-			while (parameterIter != parametersEnd) {
-				ss << (*parameterIter);
-				++parameterIter;
-
-				if (parameterIter == parametersEnd)
-					break;
-
-				ss << " ";
-			}
-			ss << ") ";
-
-
-			// body expressions
-			vector<cell_t*>::const_iterator bodyExprIter = mBodyExpressions.begin();
-			vector<cell_t*>::const_iterator bodyExprsEnd = mBodyExpressions.end();
-			while (bodyExprIter != bodyExprsEnd) {
-				ss << (*bodyExprIter);
-				++bodyExprIter;
-
-				if (bodyExprIter == bodyExprsEnd)
-					break;
-
-				ss << " ";
-			}
-			ss << ")";
-			
-			return ss.str();
-		}
+		virtual operator string();
 
 		vector<symbol_cell*> 	mParameters; // list of 0 or more arguments
 		vector<cell_t*> 	mBodyExpressions; // list of 1 or more body statements.
@@ -233,6 +197,11 @@ namespace elisp {
 
 		/// Read eval print loop.
 		void repl(string prompt = "elisp> ");
+
+		static auto atom(const std::string& token) 	-> cell_t*;
+		static auto read(TokenStream& stream) 		-> std::vector<cell_t*>;
+		static auto read(string s) 					-> std::vector<cell_t*>;
+		static auto to_string(cell_t* exp) 			-> std::string;
 	};
 }
 
