@@ -72,6 +72,36 @@ namespace elisp {
 
 		return returnVal;
 	}
+
+	lambda_cell::operator string() {
+		std::ostringstream ss;
+		ss << "(lambda (";
+
+		// parameters
+		bool addspace = false;
+		for (auto param : mParameters) {
+			if (addspace)
+				ss << " ";
+			else
+				addspace = true;
+			ss << param;
+		}
+		ss << ") ";
+
+
+		// body expressions
+		addspace = false;
+		for (auto bodyExpr : mBodyExpressions) {
+			if (addspace)
+				ss << " ";
+			else
+				addspace = true;
+			ss << bodyExpr;
+		}
+		ss << ")";
+
+		return ss.str();
+	}
 	// }}}
 
 	////////////////////////////////////////////////////////////////////////////////
@@ -929,7 +959,7 @@ namespace elisp {
 	}
 	// }}}
 
-	// TokenStream, writer, and the reader {{{
+	// TokenStream, writer, reader, and Program {{{
 	TokenStream::TokenStream(std::istream& stream) : is(stream) {}
 
 	std::string TokenStream::nextToken() {
@@ -956,7 +986,7 @@ namespace elisp {
 	/**
 	 * Given a string token, creates the atom it represents
 	 */
-	cell_t* atom(const std::string& token) {
+	cell_t* Program::atom(const std::string& token) {
 		if (token[0] == '#') {
 			const std::string::value_type& boolid = token[1];
 			bool val = (boolid == 't' || boolid == 'T');
@@ -979,7 +1009,7 @@ namespace elisp {
 	/**
 	 * Returns a list of top-level expressions.
 	 */
-	std::vector<cell_t*> read(TokenStream& stream) {
+	std::vector<cell_t*> Program::read(TokenStream& stream) {
 		std::vector<std::vector<cell_t*>> exprStack; // The current stack of nested list expressions.
 		exprStack.emplace_back(); // top-level scope
 
@@ -1005,13 +1035,13 @@ namespace elisp {
 	/**
 	 * Returns a list of top-level expressions.
 	 */
-	std::vector<cell_t*> read(string s) {
+	std::vector<cell_t*> Program::read(string s) {
 		std::istringstream iss(s);
 		TokenStream tokStream(iss);
 		return read(tokStream);
 	}
 
-	std::string to_string(cell_t* exp) {
+	std::string Program::to_string(cell_t* exp) {
 		std::ostringstream ss;
 		if (exp)
 			ss << exp;
@@ -1019,9 +1049,7 @@ namespace elisp {
 			ss << "'()";
 		return ss.str();
 	}
-	// }}}
 
-	// Program {{{
 	Program::Program() { add_globals(global_env); }
 
 	/// Eval a string of code and give the result as a string.
