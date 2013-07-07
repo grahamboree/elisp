@@ -186,7 +186,7 @@ namespace elisp {
 	class Program {
 		Environment global_env;
 
-		public:
+	public:
 		Program();
 
 		/// Eval a string of code and give the result as a string.
