@@ -12,7 +12,7 @@ namespace elisp {
 	{
 	}
 
-	std::ostream& operator << (std::ostream& os, shared_ptr<cell_t> obj) {
+	std::ostream& operator << (std::ostream& os, Cell obj) {
 		return (os << static_cast<string>(*obj));
 	}
 
@@ -29,7 +29,7 @@ namespace elisp {
 		trueOrDie(inCell, "Insufficient arguments provided to " + methodName + ".");
 	}
 
-	cons_cell::cons_cell(shared_ptr<cell_t> inCar, shared_ptr<cons_cell> inCdr)
+	cons_cell::cons_cell(Cell inCar, shared_ptr<cons_cell> inCdr)
 	: cell_t(kCellType_cons)
 	, car(inCar)
 	, cdr(inCdr)
@@ -51,7 +51,7 @@ namespace elisp {
 		return ss.str();
 	}
 
-	shared_ptr<cell_t> lambda_cell::eval(shared_ptr<cons_cell> args, Env currentEnv) {
+	Cell lambda_cell::eval(shared_ptr<cons_cell> args, Env currentEnv) {
 		Env newEnv = std::make_shared<Environment>(env);
 
 		// Match the arguments to the parameters.
@@ -62,7 +62,7 @@ namespace elisp {
 		}
 
 		// Evaluate the body expressions with the new environment.  Return the result of the last body expression.
-		shared_ptr<cell_t> returnVal;
+		Cell returnVal;
 		for (auto bodyExpr : mBodyExpressions)
 			returnVal = newEnv->eval(bodyExpr);
 
@@ -102,7 +102,7 @@ namespace elisp {
 
 	////////////////////////////////////////////////////////////////////////////////
 	// Util {{{
-	bool cell_to_bool(shared_ptr<cell_t> cell) {
+	bool cell_to_bool(Cell cell) {
 		return (cell != empty_list and (cell->type != kCellType_bool || static_cast<bool_cell*>(cell.get())->value));
 	}
 
@@ -132,9 +132,9 @@ namespace elisp {
 		return false;
 	}
 
-	shared_ptr<cons_cell> makeList(vector<shared_ptr<cell_t>> list) {
+	shared_ptr<cons_cell> makeList(vector<Cell> list) {
 		shared_ptr<cons_cell> result;
-		vector<shared_ptr<cell_t>>::const_reverse_iterator iter;
+		vector<Cell>::const_reverse_iterator iter;
 		for (iter = list.rbegin(); iter != list.rend(); ++iter)
 			result = std::make_shared<cons_cell>(*iter, result);
 		return result;
@@ -152,11 +152,11 @@ namespace elisp {
 		return outer->find(var);
 	}
 
-	inline shared_ptr<cell_t> Environment::get(const string& var) {
+	inline Cell Environment::get(const string& var) {
 		return mSymbolMap.find(var)->second;
 	}
 
-	inline shared_ptr<cell_t> Environment::eval(shared_ptr<cell_t> x) {
+	inline Cell Environment::eval(Cell x) {
 		trueOrDie(x != nullptr, "Missing procedure.  Original code was most likely (), which is illegal.");
 		
 		if (x->type == kCellType_symbol) {
@@ -166,7 +166,7 @@ namespace elisp {
 		} else if (x->type == kCellType_cons) {
 			// Function call
 			cons_cell* listcell = static_cast<cons_cell*>(x.get());
-			shared_ptr<cell_t> callable = this->eval(listcell->car);
+			Cell callable = this->eval(listcell->car);
 
 			// If the first argument is a symbol, look it up in the current environment.
 			if (callable->type == kCellType_symbol) {
@@ -194,13 +194,13 @@ namespace elisp {
 	// Prelude {{{
 	struct numerical_proc : public proc_cell {
 	protected:
-		double getOpValue(shared_ptr<cell_t> inOp) {
+		double getOpValue(Cell inOp) {
 			trueOrDie((inOp->type == kCellType_number), "Expected only number arguments");
 			return static_cast<number_cell*>(inOp.get())->value;
 		}
 	};
 
-	struct add_proc : public numerical_proc { virtual shared_ptr<cell_t> evalProc(shared_ptr<cons_cell> args, Env env); };
+	struct add_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	/*struct sub_proc : public numerical_proc { virtual cell_t* evalProc(cons_cell* args, Env env); };
 	struct mult_proc: public numerical_proc { virtual cell_t* evalProc(cons_cell* args, Env env); };
 	struct div_proc : public numerical_proc { virtual cell_t* evalProc(cons_cell* args, Env env); };
@@ -236,7 +236,7 @@ namespace elisp {
 		env.mSymbolMap["exit"] 		= std::make_shared< exit_proc    >();*/
 	}
 
-	inline shared_ptr<cell_t> add_proc::evalProc(shared_ptr<cons_cell> args, Env env) {
+	inline Cell add_proc::evalProc(shared_ptr<cons_cell> args, Env env) {
 		verifyCell(args, "+");
 		
 		shared_ptr<cons_cell> currentCell = args;
@@ -982,7 +982,7 @@ namespace elisp {
 	/**
 	 * Given a string token, creates the atom it represents
 	 */
-	shared_ptr<cell_t> Program::atom(const std::string& token) {
+	Cell Program::atom(const std::string& token) {
 		if (token[0] == '#') {
 			const auto& boolid = token[1];
 			bool val = (boolid == 't' || boolid == 'T');
@@ -1005,8 +1005,8 @@ namespace elisp {
 	/**
 	 * Returns a list of top-level expressions.
 	 */
-	std::vector<shared_ptr<cell_t>> Program::read(TokenStream& stream) {
-		std::vector<std::vector<shared_ptr<cell_t>>> exprStack; // The current stack of nested list expressions.
+	std::vector<Cell> Program::read(TokenStream& stream) {
+		std::vector<std::vector<Cell>> exprStack; // The current stack of nested list expressions.
 		exprStack.emplace_back(); // top-level scope
 
 		for (std::string token = stream.nextToken(); !token.empty(); token = stream.nextToken()) {
@@ -1016,7 +1016,7 @@ namespace elisp {
 			} else if (token == ")") {
 				// Pop the current scope off the stack and add it as a list to its parent scope.
 				trueOrDie(exprStack.size() > 1, "Unexpected ) while reading");
-				shared_ptr<cell_t> listexpr = makeList(exprStack.back());
+				Cell listexpr = makeList(exprStack.back());
 				exprStack.pop_back();
 				exprStack.back().push_back(listexpr);
 			} else {
@@ -1031,13 +1031,13 @@ namespace elisp {
 	/**
 	 * Returns a list of top-level expressions.
 	 */
-	std::vector<shared_ptr<cell_t>> Program::read(string s) {
+	std::vector<Cell> Program::read(string s) {
 		std::istringstream iss(s);
 		TokenStream tokStream(iss);
 		return read(tokStream);
 	}
 
-	std::string Program::to_string(shared_ptr<cell_t> exp) {
+	std::string Program::to_string(Cell exp) {
 		if (exp == nullptr)
 			return "'()";
 
@@ -1061,7 +1061,7 @@ namespace elisp {
 		using std::endl;
 
 		try {
-			shared_ptr<cell_t> result = nullptr;
+			Cell result = nullptr;
 			for (auto expr : read(stream))
 				result = global_env->eval(expr);
 			return to_string(result);

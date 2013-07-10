@@ -23,25 +23,27 @@ namespace elisp {
 	template<typename T> void trueOrDie(T condition, string message) { if (!condition) die(message); }
 
 	struct cell_t;
+	typedef std::shared_ptr<cell_t> Cell;
+
 	class Environment;
+	typedef std::shared_ptr<Environment> Env;
 
 	////////////////////////////////////////////////////////////////////////////////
 	// Environment
-	typedef std::shared_ptr<Environment> Env;
 	class Environment : public std::enable_shared_from_this<Environment> {
 	public:
 		Environment();
 		Environment(Env inOuter);
 
 		Env find(const string& var);
-		shared_ptr<cell_t> get(const string& var);
-		shared_ptr<cell_t> eval(shared_ptr<cell_t> x); 
+		Cell get(const string& var);
+		Cell eval(Cell x); 
 
 	private:
 		Env outer;
 
 	public:
-		std::map<string, shared_ptr<cell_t>> mSymbolMap;
+		std::map<string, Cell> mSymbolMap;
 	};
 	
 	////////////////////////////////////////////////////////////////////////////////
@@ -102,16 +104,16 @@ namespace elisp {
 	};
 
 	struct cons_cell : public cell_t, public std::enable_shared_from_this<cons_cell> {
-		shared_ptr<cell_t> car;
+		Cell car;
 		shared_ptr<cons_cell> cdr;
 
-		cons_cell(shared_ptr<cell_t> inCar, shared_ptr<cons_cell> inCdr);
+		cons_cell(Cell inCar, shared_ptr<cons_cell> inCdr);
 		virtual operator string();
 	};
 	shared_ptr<cons_cell> empty_list = nullptr;
 
 	struct proc_cell : public cell_t {
-		virtual shared_ptr<cell_t> evalProc(shared_ptr<cons_cell> args, Env env) = 0;
+		virtual Cell evalProc(shared_ptr<cons_cell> args, Env env) = 0;
 		virtual operator string() { return "#procedure"; }
 	protected:
 		void verifyCell(shared_ptr<cons_cell> inCell, string methodName);
@@ -123,16 +125,16 @@ namespace elisp {
 		Env env;
 		lambda_cell(Env outerEnv) :cell_t(kCellType_lambda), env(outerEnv) {}
 
-		virtual shared_ptr<cell_t> eval(shared_ptr<cons_cell> args, Env currentEnv);
+		virtual Cell eval(shared_ptr<cons_cell> args, Env currentEnv);
 		virtual operator string();
 
 		vector<shared_ptr<symbol_cell>> mParameters; // 0 or more arguments
-		vector<shared_ptr<cell_t>> 		mBodyExpressions; // 1 or more body statements.
+		vector<Cell> 		mBodyExpressions; // 1 or more body statements.
 	};
 
 	////////////////////////////////////////////////////////////////////////////////
 	// Util.h
-	bool cell_to_bool(shared_ptr<cell_t> cell);
+	bool cell_to_bool(Cell cell);
 
 	/**
 	 * Replaces all occurances of \p from with \p to in \p str
@@ -150,7 +152,7 @@ namespace elisp {
 	 * A convenient use-case:
 	 * cons_cell* cons_cell = makeList({ new symbol_cell("+"), new number_cell(1), new number_cell(2)});
 	 */
-	shared_ptr<cons_cell> makeList(std::vector<shared_ptr<cell_t>> list);
+	shared_ptr<cons_cell> makeList(std::vector<Cell> list);
 
 
 	////////////////////////////////////////////////////////////////////////////////
@@ -197,10 +199,10 @@ namespace elisp {
 		/// Read eval print loop.
 		void repl(string prompt = "elisp> ");
 
-		static auto atom 	(const std::string& token) -> shared_ptr<cell_t>;
-		static auto read 		 (TokenStream& stream) -> std::vector<shared_ptr<cell_t>>;
-		static auto read					(string s) -> std::vector<shared_ptr<cell_t>>;
-		static auto to_string (shared_ptr<cell_t> exp) -> string;
+		static auto atom(const std::string& token) 	-> Cell;
+		static auto read(TokenStream& stream) 		-> std::vector<Cell>;
+		static auto read(string s) 		 			-> std::vector<Cell>;
+		static auto to_string (Cell exp) 			-> string;
 	};
 }
 
