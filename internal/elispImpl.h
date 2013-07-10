@@ -55,13 +55,13 @@ namespace elisp {
 		return ss.str();
 	}
 
-	cell_t* lambda_cell::eval(list_cell* args, Environment& currentEnv) {
-		Environment* newEnv = new Environment(env);
+	cell_t* lambda_cell::eval(list_cell* args, Env currentEnv) {
+		Env newEnv = std::make_shared<Environment>(env);
 
 		// Match the arguments to the parameters.
 		for (auto paramID : mParameters) {
 			trueOrDie(args != empty_list, "insufficient arguments provided to function");
-			newEnv->mSymbolMap[paramID->identifier] = currentEnv.eval(args->car);
+			newEnv->mSymbolMap[paramID->identifier] = currentEnv->eval(args->car);
 			args = args->cdr;
 		}
 
@@ -146,14 +146,13 @@ namespace elisp {
 	// }}}
 	
 	// Environment {{{
-	inline Environment::Environment() :outer(NULL) {}
-	inline Environment::Environment(Environment& inOuter) :outer(&inOuter) {}
-	inline Environment::Environment(Environment* inOuter) :outer(inOuter) {}
+	inline Environment::Environment() {}
+	inline Environment::Environment(Env inOuter) :outer(inOuter) {}
 
-	inline Environment* Environment::find(const string& var) {
+	inline Env Environment::find(const string& var) {
 		if (mSymbolMap.find(var) != mSymbolMap.end())
-			return this;
-		trueOrDie(outer != NULL, "Undefined symbol " + var);
+			return shared_from_this();
+		trueOrDie(outer, "Undefined symbol " + var);
 		return outer->find(var);
 	}
 
@@ -178,7 +177,7 @@ namespace elisp {
 			if (callable->type == kCellType_symbol) {
 				string callableName = static_cast<symbol_cell*>(callable)->identifier;
 
-				Environment* enclosingEnvironment = find(callableName);
+				Env enclosingEnvironment = find(callableName);
 				trueOrDie(enclosingEnvironment, "Undefined function: " + callableName);
 
 				callable = enclosingEnvironment->get(callableName);
@@ -186,10 +185,10 @@ namespace elisp {
 
 			if (callable->type == kCellType_procedure) { 
 				// Eval the procedure with the rest of the arguments.
-				return static_cast<proc_cell*>(callable)->evalProc(listcell->cdr, *this);
+				return static_cast<proc_cell*>(callable)->evalProc(listcell->cdr, shared_from_this());
 			} else if (callable->type == kCellType_lambda) { 
 				// Eval the lambda with the rest of the arguments.
-				return static_cast<lambda_cell*>(callable)->eval(listcell->cdr, *this);
+				return static_cast<lambda_cell*>(callable)->eval(listcell->cdr, shared_from_this());
 			}
 			die("Expected procedure or lambda as first element in an sexpression.");
 		}
@@ -197,6 +196,7 @@ namespace elisp {
 	}
 	// }}}
 
+#if 0
 	// Prelude {{{
 	struct numerical_proc : public proc_cell {
 	protected:
@@ -859,7 +859,7 @@ namespace elisp {
 		trueOrDie(currentCell->car->type == kCellType_cons, "The second argument to \"let\" must be a list of lists.");
 		list_cell* bindings = static_cast<list_cell*>(currentCell->car);
 
-		Environment* newEnv = new Environment(env);
+		Env newEnv = std::make_shared<Environment>(env);
 
 		cons_cell* currentBinding = bindings;
 		while (currentBinding) {
@@ -958,6 +958,7 @@ namespace elisp {
 		return new bool_cell(result);
 	}
 	// }}}
+#endif
 
 	// TokenStream, writer, reader, and Program {{{
 	TokenStream::TokenStream(std::istream& stream) : is(stream) {}
@@ -1050,7 +1051,7 @@ namespace elisp {
 		return ss.str();
 	}
 
-	Program::Program() { add_globals(global_env); }
+	Program::Program() { global_env = std::make_shared<Environment>(); /*add_globals(global_env); TODO*/ }
 
 	/// Eval a string of code and give the result as a string.
 	inline string Program::runCode(string inCode) {
@@ -1067,7 +1068,7 @@ namespace elisp {
 		try {
 			cell_t* result = nullptr;
 			for (auto expr : read(stream))
-				result = global_env.eval(expr);
+				result = global_env->eval(expr);
 			return to_string(result);
 		} catch (const std::logic_error& e) {
 			// logic_error's are thrown for invalid code.

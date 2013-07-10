@@ -16,27 +16,29 @@
 namespace elisp {
 	using std::string;
 	using std::vector;
+	using std::shared_ptr;
 
 	// Assertion functions
 	void die(string message) { throw std::logic_error(message); }
-	void trueOrDie(bool condition, string message) { if (!condition) die(message); }
+	template<typename T> void trueOrDie(T condition, string message) { if (!condition) die(message); }
 
 	struct cell_t;
+	class Environment;
 
 	////////////////////////////////////////////////////////////////////////////////
 	// Environment
-	class Environment {
+	typedef std::shared_ptr<Environment> Env;
+	class Environment : public std::enable_shared_from_this<Environment> {
 	public:
 		Environment();
-		Environment(Environment& inOuter);
-		Environment(Environment* inOuter);
+		Environment(Env inOuter);
 
-		Environment* find(const string& var);
+		Env find(const string& var);
 		cell_t* get(const string& var);
 		cell_t* eval(cell_t* x); 
 
 	private:
-		Environment* outer;
+		Env outer;
 
 	public:
 		std::map<string, cell_t*> mSymbolMap;
@@ -112,7 +114,7 @@ namespace elisp {
 	list_cell* empty_list = NULL;
 
 	struct proc_cell : public cell_t {
-		virtual cell_t* evalProc(list_cell* args, Environment& env) = 0;
+		virtual cell_t* evalProc(list_cell* args, Env env) = 0;
 		virtual operator string() { return "#procedure"; }
 	protected:
 		void verifyCell(cons_cell* inCell, string methodName);
@@ -121,10 +123,10 @@ namespace elisp {
 	};
 
 	struct lambda_cell : public cell_t {
-		Environment *env;
-		lambda_cell(Environment* outerEnv) :cell_t(kCellType_lambda), env(outerEnv) {}
+		Env env;
+		lambda_cell(Env outerEnv) :cell_t(kCellType_lambda), env(outerEnv) {}
 
-		virtual cell_t* eval(list_cell* args, Environment& currentEnv);
+		virtual cell_t* eval(list_cell* args, Env currentEnv);
 		virtual operator string();
 
 		vector<symbol_cell*> 	mParameters; // list of 0 or more arguments
@@ -184,7 +186,7 @@ namespace elisp {
 	////////////////////////////////////////////////////////////////////////////////
 	// Program
 	class Program {
-		Environment global_env;
+		Env global_env;
 
 	public:
 		Program();
