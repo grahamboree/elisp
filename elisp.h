@@ -65,6 +65,8 @@ namespace elisp {
 	/// Cell type base class
 	struct cell_t {
 		eCellType type;
+
+		virtual ~cell_t() {}
 		
 		virtual operator string() = 0;
 		operator bool();
@@ -75,6 +77,7 @@ namespace elisp {
 	struct bool_cell : public cell_t {
 		bool value;
 		bool_cell(bool inValue) :cell_t(kCellType_bool), value(inValue) {}
+		virtual ~bool_cell() {}
 		virtual operator string() { return value ? "#t" : "#f"; }
 	};
 
@@ -82,24 +85,28 @@ namespace elisp {
 		string valueString;
 		double value;
 		number_cell(double inValue) :cell_t(kCellType_number), value(inValue) {}
+		virtual ~number_cell() {}
 		virtual operator string(); 
 	};
 
 	struct char_cell : public cell_t { 
 		char value;
 		char_cell(char inValue) :cell_t(kCellType_char), value(inValue) {}
+		virtual ~char_cell() {}
 		virtual operator string() { std::ostringstream ss; ss << value; return ss.str(); }
 	};
 
 	struct string_cell : public cell_t {
 		string value;
 		string_cell(string inVal) :cell_t(kCellType_string), value(inVal) {}
+		virtual ~string_cell() {}
 		virtual operator string() { return value; }
 	};
 
 	struct symbol_cell : public cell_t {
 		string identifier;
 		symbol_cell(string id) :cell_t(kCellType_symbol), identifier(id) {}
+		virtual ~symbol_cell() {}
 		virtual operator string() { return identifier; }
 	};
 
@@ -108,6 +115,7 @@ namespace elisp {
 		shared_ptr<cons_cell> cdr;
 
 		cons_cell(Cell inCar, shared_ptr<cons_cell> inCdr);
+		virtual ~cons_cell() {}
 		virtual operator string();
 	};
 	shared_ptr<cons_cell> empty_list = nullptr;
@@ -115,6 +123,8 @@ namespace elisp {
 	struct proc_cell : public cell_t {
 		virtual Cell evalProc(shared_ptr<cons_cell> args, Env env) = 0;
 		virtual operator string() { return "#procedure"; }
+
+		virtual ~proc_cell() {}
 	protected:
 		void verifyCell(shared_ptr<cons_cell> inCell, string methodName);
 
@@ -124,6 +134,7 @@ namespace elisp {
 	struct lambda_cell : public cell_t {
 		Env env;
 		lambda_cell(Env outerEnv) :cell_t(kCellType_lambda), env(outerEnv) {}
+		virtual ~lambda_cell() {}
 
 		virtual Cell eval(shared_ptr<cons_cell> args, Env currentEnv);
 		virtual operator string();

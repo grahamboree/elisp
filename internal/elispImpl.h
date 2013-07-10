@@ -200,9 +200,9 @@ namespace elisp {
 		}
 	};
 
-	struct add_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	struct add_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); virtual ~add_proc() {} };
+	struct sub_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); virtual ~sub_proc() {} };
 	/*
-	struct sub_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct mult_proc: public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct div_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct eq_proc 	: public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
@@ -255,71 +255,71 @@ namespace elisp {
 		return std::static_pointer_cast<cell_t>(std::make_shared<number_cell>(result));
 	}
 
-#if 0
 #ifdef ELISP_TEST // {{{
 	TEST_CASE("prelude/add", "+") {
-		Environment testEnv;
+		Env testEnv = std::make_shared<Environment>();
 		add_globals(testEnv);
 		add_proc a;
-		cell_t* result;
+		Cell result;
 		number_cell* number;
+		auto oneVal = std::make_shared<number_cell>(1.0);
 		
 		// One argument
-		cons_cell* oneArg = makeList({new number_cell(1.0)});
+		auto oneArg = makeList({oneVal});
 		
 		result = a.evalProc(oneArg, testEnv);
 		REQUIRE(result->type == kCellType_number);
 		
-		number = static_cast<number_cell*>(result);
+		number = static_cast<number_cell*>(result.get());
 		REQUIRE(number->value == 1);
-		
+		 
 		// Two arguments
-		cons_cell* twoArgs = makeList({
-			new number_cell(1.0),
-			new number_cell(1.0)});
+		auto twoArgs = makeList({oneVal, oneVal});
 		
 		result = a.evalProc(twoArgs, testEnv);
 		REQUIRE(result->type == kCellType_number);
 		
-		number = static_cast<number_cell*>(result);
+		number = static_cast<number_cell*>(result.get());
 		REQUIRE(number->value == 2);
 		
 		// Seven arguments
-		cons_cell* sevenArgs = makeList({
-			new number_cell(1.0),
-			new number_cell(1.0),
-			new number_cell(1.0),
-			new number_cell(1.0),
-			new number_cell(1.0),
-			new number_cell(1.0),
-			new number_cell(1.0)});
+		shared_ptr<cons_cell> sevenArgs = makeList({
+			oneVal,
+			oneVal,
+			oneVal,
+			oneVal,
+			oneVal,
+			oneVal,
+			oneVal});
 		
 		result = a.evalProc(sevenArgs, testEnv);
 		REQUIRE(result->type == kCellType_number);
 		
-		number = static_cast<number_cell*>(result);
+		number = static_cast<number_cell*>(result.get());
 		REQUIRE(number->value == 7);
 		
 		// Nested
-		cons_cell* nested = makeList({
-			new number_cell(1.0),
+		shared_ptr<cons_cell> nested = makeList({
+			oneVal,
 			makeList({
-				new symbol_cell("+"),
-				new number_cell(1.0),
-				new number_cell(1.0)})});
+				std::make_shared<symbol_cell>("+"),
+				oneVal,
+				oneVal})
+			});
 		
 		result = a.evalProc(nested, testEnv);
 		REQUIRE(result->type == kCellType_number);
 		
-		number = static_cast<number_cell*>(result);
+		number = static_cast<number_cell*>(result.get());
 		REQUIRE(number->value == 3);
 	}
 #endif // }}}
 
-	inline cell_t* sub_proc::evalProc(cons_cell* args, Environment& env) {
+#if 0
+	inline Cell sub_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
 		verifyCell(args, "-");
 
-		cons_cell* currentCell = args;
+		shared_ptr<cons_cell> currentCell = args;
 
 		double result = getOpValue(env.eval(currentCell->car));
 		currentCell = currentCell->cdr;
@@ -340,11 +340,11 @@ namespace elisp {
 		Environment testEnv;
 		add_globals(testEnv);
 		sub_proc sub;
-		cell_t* result;
+		Cell result;
 		number_cell* number;
 		
 		// One argument
-		cons_cell* oneArg = makeList({new number_cell(1.0)});
+		shared_ptr<cons_cell> oneArg = makeList({new number_cell(1.0)});
 		
 		result = sub.evalProc(oneArg, testEnv);
 		REQUIRE(result->type == kCellType_number);
@@ -353,7 +353,7 @@ namespace elisp {
 		REQUIRE(number->value == -1);
 		
 		// Two arguments
-		cons_cell* twoArgs = makeList({
+		shared_ptr<cons_cell> twoArgs = makeList({
 			new number_cell(1.0),
 			new number_cell(1.0)});
 		
@@ -364,7 +364,7 @@ namespace elisp {
 		REQUIRE(number->value == 0);
 		
 		// Seven arguments
-		cons_cell* sevenArgs = makeList({
+		shared_ptr<cons_cell> sevenArgs = makeList({
 			new number_cell(10.0),
 			new number_cell(1.0),
 			new number_cell(1.0),
@@ -380,7 +380,7 @@ namespace elisp {
 		REQUIRE(number->value == 4);
 		
 		// Nested
-		cons_cell* nested = makeList({
+		shared_ptr<cons_cell> nested = makeList({
 			new number_cell(5.0),
 			makeList({
 				new symbol_cell("-"),
@@ -396,11 +396,11 @@ namespace elisp {
 	}
 #endif // }}}
 
-	inline cell_t* mult_proc::evalProc(cons_cell* args, Environment& env) {
+	inline Cell mult_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
 		verifyCell(args, "*");
 
 		double result = 1.0;
-		cons_cell* currentCell = args;
+		shared_ptr<cons_cell> currentCell = args;
 		while(currentCell) {
 			result *= getOpValue(env.eval(currentCell->car));
 			currentCell = currentCell->cdr;
@@ -414,11 +414,11 @@ namespace elisp {
 		Environment testEnv;
 		add_globals(testEnv);
 		mult_proc proc;
-		cell_t* result;
+		Cell result;
 		number_cell* number;
 		
 		// Two arguments
-		cons_cell* twoArgs = makeList({
+		shared_ptr<cons_cell> twoArgs = makeList({
 			new number_cell(1.0),
 			new number_cell(2.0)});
 		
@@ -429,7 +429,7 @@ namespace elisp {
 		REQUIRE(number->value == 2);
 		
 		// Seven arguments
-		cons_cell* sevenArgs = makeList({
+		shared_ptr<cons_cell> sevenArgs = makeList({
 			new number_cell(10.0),
 			new number_cell(2.0),
 			new number_cell(1.0),
@@ -445,7 +445,7 @@ namespace elisp {
 		REQUIRE(number->value == 500);
 		
 		// Nested
-		cons_cell* nested = makeList({
+		shared_ptr<cons_cell> nested = makeList({
 			new number_cell(2.0),
 			makeList({
 				new symbol_cell("*"),
@@ -461,10 +461,10 @@ namespace elisp {
 	}
 #endif // }}}
 
-	inline cell_t* div_proc::evalProc(cons_cell* args, Environment& env) {
+	inline Cell div_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
 		verifyCell(args, "/");
 
-		cons_cell* currentCell = args;
+		shared_ptr<cons_cell> currentCell = args;
 		double value = getOpValue(env.eval(currentCell->car));
 		currentCell = currentCell->cdr;
 
@@ -484,11 +484,11 @@ namespace elisp {
 		Environment testEnv;
 		add_globals(testEnv);
 		div_proc proc;
-		cell_t* result;
+		Cell result;
 		number_cell* number;
 		
 		// One arguments
-		cons_cell* oneArgs = makeList({new number_cell(2.0)});
+		shared_ptr<cons_cell> oneArgs = makeList({new number_cell(2.0)});
 		
 		result = proc.evalProc(oneArgs, testEnv);
 		REQUIRE(result->type == kCellType_number);
@@ -497,7 +497,7 @@ namespace elisp {
 		REQUIRE(number->value == 0.5);
 
 		// Two arguments
-		cons_cell* twoArgs = makeList({
+		shared_ptr<cons_cell> twoArgs = makeList({
 			new number_cell(4.0),
 			new number_cell(2.0)});
 		
@@ -508,7 +508,7 @@ namespace elisp {
 		REQUIRE(number->value == 2);
 		
 		// Seven arguments
-		cons_cell* sevenArgs = makeList({
+		shared_ptr<cons_cell> sevenArgs = makeList({
 			new number_cell(10.0),
 			new number_cell(2.0),
 			new number_cell(2.5)});
@@ -520,7 +520,7 @@ namespace elisp {
 		REQUIRE(number->value == 2);
 		
 		// Nested
-		cons_cell* nested = makeList({
+		shared_ptr<cons_cell> nested = makeList({
 			new number_cell(4.0),
 			makeList({
 				new symbol_cell("/"),
@@ -536,10 +536,10 @@ namespace elisp {
 	}
 #endif // }}}
 
-	inline cell_t* eq_proc::evalProc(cons_cell* args, Environment& env) {
+	inline Cell eq_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
 		verifyCell(args, "=");
 
-		cons_cell* currentCell = args;
+		shared_ptr<cons_cell> currentCell = args;
 
 		double value = getOpValue(env.eval(currentCell->car));
 		currentCell = currentCell->cdr;
@@ -559,10 +559,10 @@ namespace elisp {
 		Environment testEnv;
 		add_globals(testEnv);
 		eq_proc proc;
-		cell_t* result;
+		Cell result;
 
 		// Two arguments
-		cons_cell* twoArgs = makeList({
+		shared_ptr<cons_cell> twoArgs = makeList({
 			new number_cell(2.0),
 			new number_cell(2.0)});
 		
@@ -571,7 +571,7 @@ namespace elisp {
 		REQUIRE(cell_to_bool(result));
 		
 		// Seven arguments
-		cons_cell* sevenArgs = makeList({
+		shared_ptr<cons_cell> sevenArgs = makeList({
 			new number_cell(-0.0),
 			new number_cell(0.0),
 			new number_cell(0.0)});
@@ -581,7 +581,7 @@ namespace elisp {
 		REQUIRE(cell_to_bool(result));
 		
 		// Nested
-		cons_cell* nested = makeList({
+		shared_ptr<cons_cell> nested = makeList({
 			new number_cell(4.0),
 			makeList({
 				new symbol_cell("*"),
@@ -595,20 +595,20 @@ namespace elisp {
 
 #endif // }}}
 
-	inline cell_t* if_proc::evalProc(cons_cell* args, Environment& env) {
+	inline Cell if_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
 		verifyCell(args, "if");
 
-		cons_cell* currentCell = args;
+		shared_ptr<cons_cell> currentCell = args;
 		
-		cell_t* test = currentCell->car;
+		Cell test = currentCell->car;
 		currentCell = currentCell->cdr;
 		verifyCell(currentCell, "if");
 
-		cell_t* conseq 	= currentCell->car;
+		Cell conseq 	= currentCell->car;
 		currentCell = currentCell->cdr;
 		verifyCell(currentCell, "if");
 
-		cell_t* alt	= currentCell->car;
+		Cell alt	= currentCell->car;
 		currentCell = currentCell->cdr;
 
 		trueOrDie(currentCell == empty_list, "Too many arguments specified to \"if\"");
@@ -621,9 +621,9 @@ namespace elisp {
 		Environment testEnv;
 		add_globals(testEnv);
 		if_proc proc;
-		cell_t* result;
+		Cell result;
 		number_cell* number;
-		cons_cell* args;
+		shared_ptr<cons_cell> args;
 
 		args = makeList({
 				makeList({
@@ -673,9 +673,9 @@ namespace elisp {
 	}
 #endif // }}}
 
-	inline cell_t* quote_proc::evalProc(cons_cell* args, Environment&) {
+	inline Cell quote_proc::evalProc(shared_ptr<cons_cell> args, Environment&) {
 		verifyCell(args, "quote");
-		cell_t* value = args->car;
+		Cell value = args->car;
 		trueOrDie(!args->cdr, "Too many arguments specified to \"quote\"");
 		return value;
 	}
@@ -686,26 +686,26 @@ namespace elisp {
 		add_globals(testEnv);
 		quote_proc proc;
 
-		cons_cell* args = makeList({makeList({
+		shared_ptr<cons_cell> args = makeList({makeList({
 			new symbol_cell("="),
 			new number_cell(1.0),
 			new number_cell(1.0)})});
 
-		cell_t* result = proc.evalProc(args, testEnv);
+		Cell result = proc.evalProc(args, testEnv);
 		REQUIRE(result->type == kCellType_cons);
-		cons_cell* cons = static_cast<cons_cell*>(result);
+		shared_ptr<cons_cell> cons = static_cast<cons_cell*>(result);
 		REQUIRE(cons->car->type == kCellType_symbol);
 		symbol_cell* equalSymbol = static_cast<symbol_cell*>(cons->car);
 		REQUIRE(equalSymbol->identifier == "=");
 	}
 #endif // }}}
 
-	inline cell_t* set_proc::evalProc(cons_cell* args, Environment& env) {
+	inline Cell set_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
 		verifyCell(args, "set!");
 		verifyCell(args->cdr, "set!");
 
-		cell_t* var = args->car;
-		cell_t* exp = args->cdr->car;
+		Cell var = args->car;
+		Cell exp = args->cdr->car;
 
 		trueOrDie(var->type == kCellType_symbol, "set! requires a symbol as its first argument");
 		string& id = static_cast<symbol_cell*>(var)->identifier;
@@ -723,30 +723,30 @@ namespace elisp {
 		testEnv.mSymbolMap["derp"] = new number_cell(1);
 		set_proc proc;
 
-		cons_cell* args = makeList({new symbol_cell("derp"), new number_cell(2.0)});
+		shared_ptr<cons_cell> args = makeList({new symbol_cell("derp"), new number_cell(2.0)});
 
 		proc.evalProc(args, testEnv);
 		REQUIRE(testEnv.find("derp") == &testEnv);
-		cell_t* derpCell = testEnv.get("derp");
+		Cell derpCell = testEnv.get("derp");
 		REQUIRE(derpCell->type == kCellType_number);
 		number_cell* num = static_cast<number_cell*>(derpCell);
 		REQUIRE(num->value == 2);
 	}
 #endif // }}}
 
-	inline cell_t* define_proc::evalProc(cons_cell* args, Environment& env) {
+	inline Cell define_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
 		// Make sure we got enough arguments.
 		verifyCell(args, "define");
 		verifyCell(args->cdr, "define");
 
-		cell_t* firstArgument = args->car;
+		Cell firstArgument = args->car;
 		trueOrDie(firstArgument != empty_list, "No name specified for given function definition.");
 
 		if (firstArgument->type == kCellType_cons) {
 			// Defining a function.
 
 			// Get the name of the function we're defining.
-			cons_cell* currentParameter = static_cast<cons_cell*>(firstArgument);
+			shared_ptr<cons_cell> currentParameter = static_cast<cons_cell*>(firstArgument);
 			trueOrDie(currentParameter->car->type == kCellType_symbol, "Function name in define declaration must be a symbol.");
 			string functionName = static_cast<symbol_cell*>(currentParameter->car)->identifier;
 
@@ -764,7 +764,7 @@ namespace elisp {
 			}
 
 			// Get all the body expressions.
-			cons_cell* currentBodyExpr = args->cdr;
+			shared_ptr<cons_cell> currentBodyExpr = args->cdr;
 			trueOrDie(currentBodyExpr, "At least one body expression is required when defining a function.");
 			while (currentBodyExpr) {
 				lambda->mBodyExpressions.push_back(currentBodyExpr->car);
@@ -775,7 +775,7 @@ namespace elisp {
 		} else if (firstArgument->type == kCellType_symbol) {
 			// Defining a variable binding.
 			string varName = static_cast<symbol_cell*>(firstArgument)->identifier;
-			cell_t* exp = args->cdr->car;
+			Cell exp = args->cdr->car;
 
 			trueOrDie(args->cdr->cdr == empty_list, "define expects only 2 arguments when defining a variable binding.");
 
@@ -792,11 +792,11 @@ namespace elisp {
 		add_globals(testEnv);
 		define_proc proc;
 
-		cons_cell* args = makeList({new symbol_cell("derp"), new number_cell(2.0)});
+		shared_ptr<cons_cell> args = makeList({new symbol_cell("derp"), new number_cell(2.0)});
 
 		proc.evalProc(args, testEnv);
 		REQUIRE(testEnv.find("derp") == &testEnv);
-		cell_t* derpCell = testEnv.get("derp");
+		Cell derpCell = testEnv.get("derp");
 		REQUIRE(derpCell->type == kCellType_number);
 		number_cell* num = static_cast<number_cell*>(derpCell);
 		REQUIRE(num->value == 2);
@@ -804,21 +804,21 @@ namespace elisp {
 #endif // }}}
 
 
-	inline cell_t* lambda_proc::evalProc(cons_cell* args, Environment& env) {
+	inline Cell lambda_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
 		trueOrDie(args != empty_list, "Procedure 'lambda' requires at least 2 arguments, 0 given");
-		cons_cell* currentCell = args;
+		shared_ptr<cons_cell> currentCell = args;
 
 
 		// Get the paramter list 
 		trueOrDie(currentCell->car->type == kCellType_cons, "Second argument to lambda must be a list");
-		cons_cell* parameters = static_cast<cons_cell*>(currentCell->car);
+		shared_ptr<cons_cell> parameters = static_cast<cons_cell*>(currentCell->car);
 
 		// Move past the list of parameters.
 		trueOrDie(currentCell->cdr != empty_list, "Procedure 'lambda' requires at least 2 arguments. 1 given.");
 		currentCell = currentCell->cdr;
 
 		// Save the list of body statements.
-		cons_cell* listOfBodyStatements = currentCell;
+		shared_ptr<cons_cell> listOfBodyStatements = currentCell;
 
 		// Create a lambda and return it.
 		lambda_cell* cell = new lambda_cell(&env);
@@ -841,11 +841,11 @@ namespace elisp {
 		return cell;
 	}
 
-	inline cell_t* begin_proc::evalProc(cons_cell* args, Environment& env) {
+	inline Cell begin_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
 		verifyCell(args, "begin");
 
-		cons_cell* currentCell = args;
-		cell_t* value = empty_list;
+		shared_ptr<cons_cell> currentCell = args;
+		Cell value = empty_list;
 		while (currentCell) {
 			value = env.eval(currentCell->car);
 			currentCell = currentCell->cdr;
@@ -853,24 +853,24 @@ namespace elisp {
 		return value;
 	}
 
-	inline cell_t* let_proc::evalProc(cons_cell* args, Environment& env) {
+	inline Cell let_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
 		verifyCell(args, "let");
 
-		cons_cell* currentCell = args;
+		shared_ptr<cons_cell> currentCell = args;
 		trueOrDie(currentCell->car->type == kCellType_cons, "The second argument to \"let\" must be a list of lists.");
-		cons_cell* bindings = static_cast<list_cell*>(currentCell->car);
+		shared_ptr<cons_cell> bindings = static_cast<list_cell*>(currentCell->car);
 
 		Env newEnv = std::make_shared<Environment>(env);
 
-		cons_cell* currentBinding = bindings;
+		shared_ptr<cons_cell> currentBinding = bindings;
 		while (currentBinding) {
 			trueOrDie(currentBinding->car->type == kCellType_cons, "The second argument to \"let\" must be a list of lists.");
-			cons_cell* currentBindingPair = static_cast<cons_cell*>(currentBinding->car);
+			shared_ptr<cons_cell> currentBindingPair = static_cast<cons_cell*>(currentBinding->car);
 
 			trueOrDie(currentBindingPair->car->type == kCellType_symbol, "First argument in a binding expression must be a symbol");
 
 			symbol_cell* var = static_cast<symbol_cell*>(currentBindingPair->car);
-			cell_t* exp = currentBindingPair->cdr->car;
+			Cell exp = currentBindingPair->cdr->car;
 
 			trueOrDie(!currentBindingPair->cdr->cdr, "Too many arguments in binding expression.");
 
@@ -880,7 +880,7 @@ namespace elisp {
 		}
 		currentCell = currentCell->cdr;
 
-		cell_t* returnVal = empty_list;
+		Cell returnVal = empty_list;
 		while (currentCell) {
 			returnVal = newEnv->eval(currentCell->car);
 			currentCell = currentCell->cdr;
@@ -888,20 +888,20 @@ namespace elisp {
 		return returnVal;
 	}
 
-	inline cell_t* display_proc::evalProc(cons_cell* args, Environment& env) {
-		cons_cell* currentArgument = args;
+	inline Cell display_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
+		shared_ptr<cons_cell> currentArgument = args;
 		for (; currentArgument; currentArgument = currentArgument->cdr) 
 			std::cout << env.eval(currentArgument->car) << std::endl;
 		return empty_list;
 	}
 
-	inline cell_t* greater_proc::evalProc(cons_cell* args, Environment& env) {
+	inline Cell greater_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
 		trueOrDie(args && args->cdr, "Function > requires at least two arguments");
 
-		cons_cell* currentArgument = args;
+		shared_ptr<cons_cell> currentArgument = args;
 
-		cell_t* leftCell = env.eval(currentArgument->car);
-		cell_t* rightCell;
+		Cell leftCell = env.eval(currentArgument->car);
+		Cell rightCell;
 
 		trueOrDie(leftCell->type == kCellType_number, "Function > accepts only numerical arguments");
 
@@ -927,13 +927,13 @@ namespace elisp {
 		return new bool_cell(result);
 	}
 
-	inline cell_t* less_proc::evalProc(cons_cell* args, Environment& env) {
+	inline Cell less_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
 		trueOrDie(args && args->cdr, "Function < requires at least two arguments");
 
-		cons_cell* currentArgument = args;
+		shared_ptr<cons_cell> currentArgument = args;
 
-		cell_t* leftCell = env.eval(currentArgument->car);
-		cell_t* rightCell;
+		Cell leftCell = env.eval(currentArgument->car);
+		Cell rightCell;
 
 		trueOrDie(leftCell->type == kCellType_number, "Function < accepts only numerical arguments");
 
