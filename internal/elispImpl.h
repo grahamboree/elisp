@@ -201,39 +201,45 @@ namespace elisp {
 	};
 
 	struct add_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
-	/*struct sub_proc : public numerical_proc { virtual cell_t* evalProc(cons_cell* args, Env env); };
-	struct mult_proc: public numerical_proc { virtual cell_t* evalProc(cons_cell* args, Env env); };
-	struct div_proc : public numerical_proc { virtual cell_t* evalProc(cons_cell* args, Env env); };
-	struct eq_proc 	: public numerical_proc { virtual cell_t* evalProc(cons_cell* args, Env env); };
-	struct if_proc 		: public proc_cell  { virtual cell_t* evalProc(cons_cell* args, Env env); };
-	struct quote_proc 	: public proc_cell  { virtual cell_t* evalProc(cons_cell* args, Env); };
-	struct set_proc 	: public proc_cell  { virtual cell_t* evalProc(cons_cell* args, Env env); };
-	struct define_proc 	: public proc_cell  { virtual cell_t* evalProc(cons_cell* args, Env env); };
-	struct lambda_proc 	: public proc_cell  { virtual cell_t* evalProc(cons_cell* args, Env env); };
-	struct begin_proc 	: public proc_cell  { virtual cell_t* evalProc(cons_cell* args, Env env); };
-	struct let_proc 	: public proc_cell  { virtual cell_t* evalProc(cons_cell* args, Env env); };
-	struct display_proc : public proc_cell  { virtual cell_t* evalProc(cons_cell* args, Env env); };
-	struct exit_proc 	: public proc_cell  { virtual cell_t* evalProc(cons_cell*, Env) { exit(0); } };
-	struct greater_proc : public proc_cell  { virtual cell_t* evalProc(cons_cell* args, Env env); };
-	struct less_proc 	: public proc_cell  { virtual cell_t* evalProc(cons_cell* args, Env env); };*/
+	/*
+	struct sub_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	struct mult_proc: public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	struct div_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	struct eq_proc 	: public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	struct if_proc 		: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	struct quote_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	struct set_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	struct define_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	struct lambda_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	struct begin_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	struct let_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	struct display_proc : public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	struct exit_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env) { exit(0); } };
+	struct greater_proc : public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	struct less_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	*/
 
 	void add_globals(Env env) {
-		env->mSymbolMap["+"] 		= std::make_shared< add_proc     >();
-		/*env.mSymbolMap["-"] 		= std::make_shared< sub_proc     >();
-		env.mSymbolMap["*"] 		= std::make_shared< mult_proc    >();
-		env.mSymbolMap["/"] 		= std::make_shared< div_proc     >();
-		env.mSymbolMap["="] 		= std::make_shared< eq_proc      >();
-		env.mSymbolMap[">"] 		= std::make_shared< greater_proc >();
-		env.mSymbolMap["<"] 		= std::make_shared< less_proc    >();
-		env.mSymbolMap["if"] 		= std::make_shared< if_proc      >();
-		env.mSymbolMap["begin"] 	= std::make_shared< begin_proc   >();
-		env.mSymbolMap["define"] 	= std::make_shared< define_proc  >();
-		env.mSymbolMap["lambda"] 	= std::make_shared< lambda_proc  >();
-		env.mSymbolMap["quote"]		= std::make_shared< quote_proc   >();
-		env.mSymbolMap["set!"] 		= std::make_shared< set_proc     >();
-		env.mSymbolMap["let"] 		= std::make_shared< let_proc     >();
-		env.mSymbolMap["display"] 	= std::make_shared< display_proc >();
-		env.mSymbolMap["exit"] 		= std::make_shared< exit_proc    >();*/
+		env->mSymbolMap.insert({
+			{"+", 		std::make_shared< add_proc		>()}
+		/*
+			{"-", 		std::make_shared< sub_proc		>()}
+			{"*", 		std::make_shared< mult_proc		>()}
+			{"/", 		std::make_shared< div_proc		>()}
+			{"=", 		std::make_shared< eq_proc		>()}
+			{">", 		std::make_shared< greater_proc	>()}
+			{"<", 		std::make_shared< less_proc		>()}
+			{"if", 		std::make_shared< if_proc		>()}
+			{"begin", 	std::make_shared< begin_proc	>()}
+			{"define", 	std::make_shared< define_proc	>()}
+			{"lambda", 	std::make_shared< lambda_proc	>()}
+			{"quote", 	std::make_shared< quote_proc	>()}
+			{"set!",		std::make_shared< set_proc		>()}
+			{"let",		std::make_shared< let_proc		>()}
+			{"display", 	std::make_shared< display_proc	>()}
+			{"exit", 	std::make_shared< exit_proc		>()}
+		*/
+		});
 	}
 
 	inline Cell add_proc::evalProc(shared_ptr<cons_cell> args, Env env) {
