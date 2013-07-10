@@ -34,14 +34,14 @@ namespace elisp {
 		Environment(Env inOuter);
 
 		Env find(const string& var);
-		cell_t* get(const string& var);
-		cell_t* eval(cell_t* x); 
+		shared_ptr<cell_t> get(const string& var);
+		shared_ptr<cell_t> eval(shared_ptr<cell_t> x); 
 
 	private:
 		Env outer;
 
 	public:
-		std::map<string, cell_t*> mSymbolMap;
+		std::map<string, shared_ptr<cell_t>> mSymbolMap;
 	};
 	
 	////////////////////////////////////////////////////////////////////////////////
@@ -69,7 +69,6 @@ namespace elisp {
 	protected:
 		cell_t(eCellType inType);
 	};
-
 
 	struct bool_cell : public cell_t {
 		bool value;
@@ -102,22 +101,20 @@ namespace elisp {
 		virtual operator string() { return identifier; }
 	};
 
-	struct cons_cell : public cell_t {
-		cell_t* car;
-		cons_cell* cdr;
+	struct cons_cell : public cell_t, public std::enable_shared_from_this<cons_cell> {
+		shared_ptr<cell_t> car;
+		shared_ptr<cons_cell> cdr;
 
-		cons_cell(cell_t* inCar, cons_cell* inCdr);
+		cons_cell(shared_ptr<cell_t> inCar, shared_ptr<cons_cell> inCdr);
 		virtual operator string();
 	};
-
-	typedef cons_cell list_cell; // A list is a singly linked list of cons cells
-	list_cell* empty_list = NULL;
+	shared_ptr<cons_cell> empty_list = nullptr;
 
 	struct proc_cell : public cell_t {
-		virtual cell_t* evalProc(list_cell* args, Env env) = 0;
+		virtual shared_ptr<cell_t> evalProc(shared_ptr<cons_cell> args, Env env) = 0;
 		virtual operator string() { return "#procedure"; }
 	protected:
-		void verifyCell(cons_cell* inCell, string methodName);
+		void verifyCell(shared_ptr<cons_cell> inCell, string methodName);
 
 		proc_cell() :cell_t(kCellType_procedure) {}
 	};
@@ -126,16 +123,16 @@ namespace elisp {
 		Env env;
 		lambda_cell(Env outerEnv) :cell_t(kCellType_lambda), env(outerEnv) {}
 
-		virtual cell_t* eval(list_cell* args, Env currentEnv);
+		virtual shared_ptr<cell_t> eval(shared_ptr<cons_cell> args, Env currentEnv);
 		virtual operator string();
 
-		vector<symbol_cell*> 	mParameters; // list of 0 or more arguments
-		vector<cell_t*> 	mBodyExpressions; // list of 1 or more body statements.
+		vector<shared_ptr<symbol_cell>> mParameters; // 0 or more arguments
+		vector<shared_ptr<cell_t>> 		mBodyExpressions; // 1 or more body statements.
 	};
 
 	////////////////////////////////////////////////////////////////////////////////
 	// Util.h
-	bool cell_to_bool(cell_t* cell);
+	bool cell_to_bool(shared_ptr<cell_t> cell);
 
 	/**
 	 * Replaces all occurances of \p from with \p to in \p str
@@ -151,9 +148,9 @@ namespace elisp {
 	 * A helper that creates a lisp list given a vector of the list's contents.
 	 *
 	 * A convenient use-case:
-	 * cons_cell* list_cell = makeList({ new symbol_cell("+"), new number_cell(1), new number_cell(2)});
+	 * cons_cell* cons_cell = makeList({ new symbol_cell("+"), new number_cell(1), new number_cell(2)});
 	 */
-	cons_cell* makeList(std::vector<cell_t*> list);
+	shared_ptr<cons_cell> makeList(std::vector<shared_ptr<cell_t>> list);
 
 
 	////////////////////////////////////////////////////////////////////////////////
@@ -200,10 +197,10 @@ namespace elisp {
 		/// Read eval print loop.
 		void repl(string prompt = "elisp> ");
 
-		static auto atom(const std::string& token) 	-> cell_t*;
-		static auto read(TokenStream& stream) 		-> std::vector<cell_t*>;
-		static auto read(string s) 					-> std::vector<cell_t*>;
-		static auto to_string(cell_t* exp) 			-> std::string;
+		static auto atom 	(const std::string& token) -> shared_ptr<cell_t>;
+		static auto read 		 (TokenStream& stream) -> std::vector<shared_ptr<cell_t>>;
+		static auto read					(string s) -> std::vector<shared_ptr<cell_t>>;
+		static auto to_string (shared_ptr<cell_t> exp) -> string;
 	};
 }
 
