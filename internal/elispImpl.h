@@ -203,7 +203,7 @@ namespace elisp {
 	struct add_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); virtual ~add_proc() {} };
 	struct sub_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); virtual ~sub_proc() {} };
 	/*
-	struct mult_proc: public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	struct mult_proc: public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); virtual ~mult_proc() {}};
 	struct div_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct eq_proc 	: public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct if_proc 		: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
@@ -221,9 +221,9 @@ namespace elisp {
 
 	void add_globals(Env env) {
 		env->mSymbolMap.insert({
-			{"+", 		std::make_shared< add_proc		>()}
-		/*
+			{"+", 		std::make_shared< add_proc		>()},
 			{"-", 		std::make_shared< sub_proc		>()}
+		/*
 			{"*", 		std::make_shared< mult_proc		>()}
 			{"/", 		std::make_shared< div_proc		>()}
 			{"=", 		std::make_shared< eq_proc		>()}
@@ -315,87 +315,78 @@ namespace elisp {
 	}
 #endif // }}}
 
-#if 0
-	inline Cell sub_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
+	inline Cell sub_proc::evalProc(shared_ptr<cons_cell> args, Env env) {
 		verifyCell(args, "-");
 
 		shared_ptr<cons_cell> currentCell = args;
 
-		double result = getOpValue(env.eval(currentCell->car));
+		double result = getOpValue(env->eval(currentCell->car));
 		currentCell = currentCell->cdr;
 
 		if (!currentCell)
-			return new number_cell(-result);
+			return std::static_pointer_cast<cell_t>(std::make_shared<number_cell>(-result));
 
 		while(currentCell) {
-			result -= getOpValue(env.eval(currentCell->car));
+			result -= getOpValue(env->eval(currentCell->car));
 			currentCell = currentCell->cdr;
 		}
 
-		return new number_cell(result); 
+		return std::static_pointer_cast<cell_t>(std::make_shared<number_cell>(result)); 
 	}
 
 #ifdef ELISP_TEST // {{{
 	TEST_CASE("prelude/sub", "-") {
-		Environment testEnv;
+		Env testEnv = std::make_shared<Environment>();
 		add_globals(testEnv);
 		sub_proc sub;
-		Cell result;
-		number_cell* number;
+		auto oneVal = std::make_shared<number_cell>(1.0);
 		
 		// One argument
-		shared_ptr<cons_cell> oneArg = makeList({new number_cell(1.0)});
-		
-		result = sub.evalProc(oneArg, testEnv);
+		auto result = sub.evalProc(makeList({oneVal}), testEnv);
 		REQUIRE(result->type == kCellType_number);
 		
-		number = static_cast<number_cell*>(result);
+		auto number = std::static_pointer_cast<number_cell>(result);
 		REQUIRE(number->value == -1);
 		
 		// Two arguments
-		shared_ptr<cons_cell> twoArgs = makeList({
-			new number_cell(1.0),
-			new number_cell(1.0)});
-		
-		result = sub.evalProc(twoArgs, testEnv);
+		result = sub.evalProc(makeList({oneVal, oneVal}), testEnv);
 		REQUIRE(result->type == kCellType_number);
 		
-		number = static_cast<number_cell*>(result);
+		number = std::static_pointer_cast<number_cell>(result);
 		REQUIRE(number->value == 0);
 		
 		// Seven arguments
-		shared_ptr<cons_cell> sevenArgs = makeList({
-			new number_cell(10.0),
-			new number_cell(1.0),
-			new number_cell(1.0),
-			new number_cell(1.0),
-			new number_cell(1.0),
-			new number_cell(1.0),
-			new number_cell(1.0)});
-		
-		result = sub.evalProc(sevenArgs, testEnv);
+		result = sub.evalProc(makeList({
+			std::make_shared<number_cell>(10.0),
+			oneVal,
+			oneVal,
+			oneVal,
+			oneVal,
+			oneVal,
+			oneVal}), testEnv);
 		REQUIRE(result->type == kCellType_number);
 		
-		number = static_cast<number_cell*>(result);
+		number = std::static_pointer_cast<number_cell>(result);
 		REQUIRE(number->value == 4);
 		
 		// Nested
 		shared_ptr<cons_cell> nested = makeList({
-			new number_cell(5.0),
+			std::make_shared<number_cell>(5.0),
 			makeList({
-				new symbol_cell("-"),
-				new number_cell(2.0),
-				new number_cell(1.0)}),
-			new number_cell(1.0)});
+				std::make_shared<symbol_cell>("-"),
+				std::make_shared<number_cell>(2.0),
+				oneVal}),
+			oneVal});
 		
 		result = sub.evalProc(nested, testEnv);
 		REQUIRE(result->type == kCellType_number);
 		
-		number = static_cast<number_cell*>(result);
+		number = std::static_pointer_cast<number_cell>(result);
 		REQUIRE(number->value == 3);
 	}
 #endif // }}}
 
+#if 0
 	inline Cell mult_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
 		verifyCell(args, "*");
 
