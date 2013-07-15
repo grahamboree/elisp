@@ -208,8 +208,8 @@ namespace elisp {
 	struct if_proc 		: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct quote_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct set_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
-	/*
 	struct define_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	/*
 	struct lambda_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct begin_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct let_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
@@ -229,11 +229,11 @@ namespace elisp {
 			{"if", 		std::make_shared< if_proc		>()},
 			{"quote", 	std::make_shared< quote_proc	>()},
 			{"set!",	std::make_shared< set_proc		>()},
+			{"define", 	std::make_shared< define_proc	>()},
 		/*
 			{">", 		std::make_shared< greater_proc	>()},
 			{"<", 		std::make_shared< less_proc		>()},
 			{"begin", 	std::make_shared< begin_proc	>()},
-			{"define", 	std::make_shared< define_proc	>()},
 			{"lambda", 	std::make_shared< lambda_proc	>()},
 			{"let",		std::make_shared< let_proc		>()},
 			{"display", std::make_shared< display_proc	>()},
@@ -688,53 +688,52 @@ namespace elisp {
 	}
 #endif // }}}
 
-#if 0 //{{{
-	inline Cell define_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
+	inline Cell define_proc::evalProc(shared_ptr<cons_cell> args, Env env) {
 		// Make sure we got enough arguments.
 		verifyCell(args, "define");
 		verifyCell(args->cdr, "define");
 
-		Cell firstArgument = args->car;
+		auto firstArgument = args->car;
 		trueOrDie(firstArgument != empty_list, "No name specified for given function definition.");
 
 		if (firstArgument->type == kCellType_cons) {
 			// Defining a function.
 
 			// Get the name of the function we're defining.
-			shared_ptr<cons_cell> currentParameter = static_cast<cons_cell*>(firstArgument);
+			auto currentParameter = std::static_pointer_cast<cons_cell>(firstArgument);
 			trueOrDie(currentParameter->car->type == kCellType_symbol, "Function name in define declaration must be a symbol.");
-			string functionName = static_cast<symbol_cell*>(currentParameter->car)->identifier;
+			auto functionName = std::static_pointer_cast<symbol_cell>(currentParameter->car)->identifier;
 
 			// Construct a lambda and bind it to the function name.
-			lambda_cell* lambda = new lambda_cell(&env);
+			auto lambda = std::make_shared<lambda_cell>(env);
 
 			// Get the parameter name list if there are any specified.
 			currentParameter = currentParameter->cdr;
 			while (currentParameter) {
 				trueOrDie(currentParameter->car->type == kCellType_symbol,
 						"Only symbols can be in the parameter list for a function definition.");
-				symbol_cell* parameter = static_cast<symbol_cell*>(currentParameter->car);
+				auto parameter = std::static_pointer_cast<symbol_cell>(currentParameter->car);
 				lambda->mParameters.push_back(parameter);
 				currentParameter = currentParameter->cdr;
 			}
 
 			// Get all the body expressions.
-			shared_ptr<cons_cell> currentBodyExpr = args->cdr;
+			auto currentBodyExpr = args->cdr;
 			trueOrDie(currentBodyExpr, "At least one body expression is required when defining a function.");
 			while (currentBodyExpr) {
 				lambda->mBodyExpressions.push_back(currentBodyExpr->car);
 				currentBodyExpr = currentBodyExpr->cdr;
 			}
 
-			env.mSymbolMap[functionName] = lambda;
+			env->mSymbolMap[functionName] = lambda;
 		} else if (firstArgument->type == kCellType_symbol) {
 			// Defining a variable binding.
-			string varName = static_cast<symbol_cell*>(firstArgument)->identifier;
-			Cell exp = args->cdr->car;
+			auto varName = std::static_pointer_cast<symbol_cell>(firstArgument)->identifier;
+			auto exp = args->cdr->car;
 
 			trueOrDie(args->cdr->cdr == empty_list, "define expects only 2 arguments when defining a variable binding.");
 
-			env.mSymbolMap[varName] = env.eval(exp);
+			env->mSymbolMap[varName] = env->eval(exp);
 		} else {
 			die("Invalid first parameter passed to define.  Expected either a symbol or a list of symbols.");
 		}
@@ -743,22 +742,23 @@ namespace elisp {
 
 #ifdef ELISP_TEST // {{{
 	TEST_CASE("prelude/define", "define") {
-		Environment testEnv;
+		Env testEnv = std::make_shared<Environment>();
 		add_globals(testEnv);
 		define_proc proc;
 
-		shared_ptr<cons_cell> args = makeList({new symbol_cell("derp"), new number_cell(2.0)});
-
-		proc.evalProc(args, testEnv);
-		REQUIRE(testEnv.find("derp") == &testEnv);
-		Cell derpCell = testEnv.get("derp");
+		proc.evalProc(makeList({
+					std::make_shared<symbol_cell>("derp"),
+					std::make_shared<number_cell>(2.0)}), testEnv);
+		REQUIRE(testEnv->find("derp") == testEnv);
+		auto derpCell = testEnv->get("derp");
 		REQUIRE(derpCell->type == kCellType_number);
-		number_cell* num = static_cast<number_cell*>(derpCell);
+		auto num = std::static_pointer_cast<number_cell>(derpCell);
 		REQUIRE(num->value == 2);
 	}
 #endif // }}}
 
 
+#if 0 //{{{
 	inline Cell lambda_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
 		trueOrDie(args != empty_list, "Procedure 'lambda' requires at least 2 arguments, 0 given");
 		shared_ptr<cons_cell> currentCell = args;
