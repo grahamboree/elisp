@@ -207,8 +207,8 @@ namespace elisp {
 	struct eq_proc 	: public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct if_proc 		: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct quote_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
-	/*
 	struct set_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	/*
 	struct define_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct lambda_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct begin_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
@@ -228,13 +228,13 @@ namespace elisp {
 			{"=", 		std::make_shared< eq_proc		>()},
 			{"if", 		std::make_shared< if_proc		>()},
 			{"quote", 	std::make_shared< quote_proc	>()},
+			{"set!",	std::make_shared< set_proc		>()},
 		/*
 			{">", 		std::make_shared< greater_proc	>()},
 			{"<", 		std::make_shared< less_proc		>()},
 			{"begin", 	std::make_shared< begin_proc	>()},
 			{"define", 	std::make_shared< define_proc	>()},
 			{"lambda", 	std::make_shared< lambda_proc	>()},
-			{"set!",	std::make_shared< set_proc		>()},
 			{"let",		std::make_shared< let_proc		>()},
 			{"display", std::make_shared< display_proc	>()},
 			{"exit", 	std::make_shared< exit_proc		>()},
@@ -652,41 +652,43 @@ namespace elisp {
 	}
 #endif // }}}
 
-#if 0
-	inline Cell set_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
+	inline Cell set_proc::evalProc(shared_ptr<cons_cell> args, Env env) {
 		verifyCell(args, "set!");
 		verifyCell(args->cdr, "set!");
 
-		Cell var = args->car;
-		Cell exp = args->cdr->car;
+		auto var = args->car;
+		auto exp = args->cdr->car;
 
 		trueOrDie(var->type == kCellType_symbol, "set! requires a symbol as its first argument");
-		string& id = static_cast<symbol_cell*>(var)->identifier;
-		Environment* e = env.find(id);
+		auto& id = std::static_pointer_cast<symbol_cell>(var)->identifier;
+		auto e = env->find(id);
 		trueOrDie(e, "Cannot set undefined variable " + id);
 
-		e->mSymbolMap[id] = env.eval(exp);
+		e->mSymbolMap[id] = env->eval(exp);
 		return empty_list;
 	}
 
 #ifdef ELISP_TEST // {{{
 	TEST_CASE("prelude/set!", "set!") {
-		Environment testEnv;
+		Env testEnv = std::make_shared<Environment>();
 		add_globals(testEnv);
-		testEnv.mSymbolMap["derp"] = new number_cell(1);
+		testEnv->mSymbolMap["derp"] = std::make_shared<number_cell>(1.0);
 		set_proc proc;
 
-		shared_ptr<cons_cell> args = makeList({new symbol_cell("derp"), new number_cell(2.0)});
+		auto args = makeList({
+				std::make_shared<symbol_cell>("derp"),
+				std::make_shared<number_cell>(2.0)});
 
 		proc.evalProc(args, testEnv);
-		REQUIRE(testEnv.find("derp") == &testEnv);
-		Cell derpCell = testEnv.get("derp");
+		REQUIRE(testEnv->find("derp") == testEnv);
+		auto derpCell = testEnv->get("derp");
 		REQUIRE(derpCell->type == kCellType_number);
-		number_cell* num = static_cast<number_cell*>(derpCell);
+		auto num = std::static_pointer_cast<number_cell>(derpCell);
 		REQUIRE(num->value == 2);
 	}
 #endif // }}}
 
+#if 0 //{{{
 	inline Cell define_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
 		// Make sure we got enough arguments.
 		verifyCell(args, "define");
