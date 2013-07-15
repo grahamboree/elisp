@@ -209,8 +209,8 @@ namespace elisp {
 	struct quote_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct set_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct define_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
-	/*
 	struct lambda_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	/*
 	struct begin_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct let_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct display_proc : public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
@@ -230,11 +230,11 @@ namespace elisp {
 			{"quote", 	std::make_shared< quote_proc	>()},
 			{"set!",	std::make_shared< set_proc		>()},
 			{"define", 	std::make_shared< define_proc	>()},
+			{"lambda", 	std::make_shared< lambda_proc	>()},
 		/*
 			{">", 		std::make_shared< greater_proc	>()},
 			{"<", 		std::make_shared< less_proc		>()},
 			{"begin", 	std::make_shared< begin_proc	>()},
-			{"lambda", 	std::make_shared< lambda_proc	>()},
 			{"let",		std::make_shared< let_proc		>()},
 			{"display", std::make_shared< display_proc	>()},
 			{"exit", 	std::make_shared< exit_proc		>()},
@@ -757,32 +757,30 @@ namespace elisp {
 	}
 #endif // }}}
 
-
-#if 0 //{{{
-	inline Cell lambda_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
+	inline Cell lambda_proc::evalProc(shared_ptr<cons_cell> args, Env env) {
 		trueOrDie(args != empty_list, "Procedure 'lambda' requires at least 2 arguments, 0 given");
-		shared_ptr<cons_cell> currentCell = args;
+		auto currentCell = args;
 
 
 		// Get the paramter list 
 		trueOrDie(currentCell->car->type == kCellType_cons, "Second argument to lambda must be a list");
-		shared_ptr<cons_cell> parameters = static_cast<cons_cell*>(currentCell->car);
+		auto parameters = std::static_pointer_cast<cons_cell>(currentCell->car);
 
 		// Move past the list of parameters.
 		trueOrDie(currentCell->cdr != empty_list, "Procedure 'lambda' requires at least 2 arguments. 1 given.");
 		currentCell = currentCell->cdr;
 
 		// Save the list of body statements.
-		shared_ptr<cons_cell> listOfBodyStatements = currentCell;
+		auto listOfBodyStatements = currentCell;
 
 		// Create a lambda and return it.
-		lambda_cell* cell = new lambda_cell(&env);
+		auto cell = std::make_shared<lambda_cell>(env);
 		
 		// Add the parameters.
 		currentCell = parameters;
 		while (currentCell) {
 			trueOrDie(currentCell->car->type == kCellType_symbol, "Expected only symbols in lambda parameter list.");
-			cell->mParameters.push_back(static_cast<symbol_cell*>(currentCell->car));
+			cell->mParameters.push_back(std::static_pointer_cast<symbol_cell>(currentCell->car));
 			currentCell = currentCell->cdr;
 		}
 
@@ -796,6 +794,8 @@ namespace elisp {
 		return cell;
 	}
 
+
+#if 0 //{{{
 	inline Cell begin_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
 		verifyCell(args, "begin");
 
