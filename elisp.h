@@ -76,6 +76,7 @@ namespace elisp {
 
 	struct bool_cell : public cell_t {
 		bool value;
+		template<typename T> bool_cell(T inValue) :cell_t(kCellType_bool), value(inValue) {}
 		bool_cell(bool inValue) :cell_t(kCellType_bool), value(inValue) {}
 		virtual ~bool_cell() {}
 		virtual operator string() { return value ? "#t" : "#f"; }
