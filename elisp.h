@@ -142,6 +142,7 @@ namespace elisp {
 
 		vector<shared_ptr<symbol_cell>> mParameters; // 0 or more arguments
 		vector<Cell> 		mBodyExpressions; // 1 or more body statements.
+		shared_ptr<symbol_cell> mVarargsName = nullptr;
 	};
 
 	////////////////////////////////////////////////////////////////////////////////

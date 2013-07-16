@@ -61,6 +61,16 @@ namespace elisp {
 			args = args->cdr;
 		}
 
+		if (mVarargsName) {
+			vector<Cell> varargs;
+			while (args) {
+				varargs.push_back(currentEnv->eval(args->car));
+				args = args->cdr;
+			}
+			newEnv->mSymbolMap[mVarargsName->identifier] = makeList(varargs);
+		}
+
+
 		// Evaluate the body expressions with the new environment.  Return the result of the last body expression.
 		Cell returnVal;
 		for (auto bodyExpr : mBodyExpressions)
@@ -74,19 +84,25 @@ namespace elisp {
 		ss << "(lambda (";
 
 		// parameters
-		bool addspace = false;
-		for (auto param : mParameters) {
-			if (addspace)
-				ss << " ";
-			else
-				addspace = true;
-			ss << param;
-		}
-		ss << ") ";
+		if (mVarargsName and mParameters.empty()) {
+			ss << mVarargsName;
+		} else {
+			bool addspace = false;
+			for (auto param : mParameters) {
+				if (addspace)
+					ss << " ";
+				else
+					addspace = true;
+				ss << param;
+			}
+			if (mVarargsName)
+				ss << " . " << mVarargsName;
 
+			ss << ") ";
+		}
 
 		// body expressions
-		addspace = false;
+		bool addspace = false;
 		for (auto bodyExpr : mBodyExpressions) {
 			if (addspace)
 				ss << " ";
@@ -200,8 +216,8 @@ namespace elisp {
 		}
 	};
 
-	struct add_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); virtual ~add_proc() {} };
-	struct sub_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); virtual ~sub_proc() {} };
+	struct add_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); virtual ~add_proc() {}};
+	struct sub_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); virtual ~sub_proc() {}};
 	struct mult_proc: public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); virtual ~mult_proc() {}};
 	struct div_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct eq_proc 	: public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
@@ -761,31 +777,41 @@ namespace elisp {
 		trueOrDie(args != empty_list, "Procedure 'lambda' requires at least 2 arguments, 0 given");
 		auto currentCell = args;
 
+		// Create a lambda and return it.
+		auto cell = std::make_shared<lambda_cell>(env);
 
 		// Get the paramter list 
-		trueOrDie(currentCell->car->type == kCellType_cons, "Second argument to lambda must be a list");
-		auto parameters = std::static_pointer_cast<cons_cell>(currentCell->car);
+		if (currentCell->car->type == kCellType_cons) {
+			auto parameters = std::static_pointer_cast<cons_cell>(currentCell->car);
+			
+			// Add the parameters.
+			auto currentParameter = parameters;
+			bool varargs = false;
+			while (currentParameter) {
+				trueOrDie(currentParameter->car->type == kCellType_symbol, "Expected only symbols in lambda parameter list.");
+				auto symbolCell = std::static_pointer_cast<symbol_cell>(currentParameter->car);
+				if (varargs) {
+					cell->mVarargsName = symbolCell;
+					trueOrDie(currentParameter->cdr == empty_list, "Only one identifier can follow a '.' in the parameter list of a lambda expression.");
+				} else if (symbolCell->identifier == ".") {
+					varargs = true;
+					trueOrDie(currentParameter->cdr != empty_list, "Expected varargs name following '.' in lambda expression.");
+				} else {
+					cell->mParameters.push_back(symbolCell);
+				}
+				currentParameter = currentParameter->cdr;
+			}
+		} else if (currentCell->car->type == kCellType_symbol) {
+			cell->mVarargsName = std::static_pointer_cast<symbol_cell>(currentCell->car);
+		} else {
+			die("Second argument to a lambda expression must be either a symbol or a list of symbols.");
+		}
 
 		// Move past the list of parameters.
 		trueOrDie(currentCell->cdr != empty_list, "Procedure 'lambda' requires at least 2 arguments. 1 given.");
 		currentCell = currentCell->cdr;
 
-		// Save the list of body statements.
-		auto listOfBodyStatements = currentCell;
-
-		// Create a lambda and return it.
-		auto cell = std::make_shared<lambda_cell>(env);
-		
-		// Add the parameters.
-		currentCell = parameters;
-		while (currentCell) {
-			trueOrDie(currentCell->car->type == kCellType_symbol, "Expected only symbols in lambda parameter list.");
-			cell->mParameters.push_back(std::static_pointer_cast<symbol_cell>(currentCell->car));
-			currentCell = currentCell->cdr;
-		}
-
 		// Add the body expressions.
-		currentCell = listOfBodyStatements;
 		while (currentCell) {
 			cell->mBodyExpressions.push_back(currentCell->car);
 			currentCell = currentCell->cdr;
