@@ -725,11 +725,20 @@ namespace elisp {
 
 			// Get the parameter name list if there are any specified.
 			currentParameter = currentParameter->cdr;
+			bool varargs = false;
 			while (currentParameter) {
 				trueOrDie(currentParameter->car->type == kCellType_symbol,
 						"Only symbols can be in the parameter list for a function definition.");
 				auto parameter = std::static_pointer_cast<symbol_cell>(currentParameter->car);
-				lambda->mParameters.push_back(parameter);
+				if (varargs) {
+					lambda->mVarargsName = parameter;
+					trueOrDie(currentParameter->cdr == empty_list, "Expected only one varargs identifier following '.' in parameter list of lambda definition");
+				} else if (parameter->identifier == ".") {
+					varargs = true;
+					trueOrDie(currentParameter->cdr != empty_list, "Expected varargs identifier following '.' in parameter list of lambda definition");
+				} else {
+					lambda->mParameters.push_back(parameter);
+				}
 				currentParameter = currentParameter->cdr;
 			}
 
