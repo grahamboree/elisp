@@ -921,7 +921,7 @@ namespace elisp {
 	// TokenStream, writer, reader, and Program {{{
 	TokenStream::TokenStream(std::istream& stream) : is(stream) {}
 
-	std::string TokenStream::nextToken() {
+	string TokenStream::nextToken() {
 		if (line.empty() and !std::getline(is, line))
 			return "";
 
@@ -929,7 +929,7 @@ namespace elisp {
 		if (std::regex_search(line, match, reg)) {
 			trueOrDie(match.prefix().str() == "", "unknown characters: " + match.prefix().str());
 
-			std::string matchStr = match[1].str();
+			string matchStr = match[1].str();
 			line = match.suffix().str();
 			if (matchStr.empty() or matchStr[0] == ';')
 				return nextToken();
@@ -945,7 +945,7 @@ namespace elisp {
 	/**
 	 * Given a string token, creates the atom it represents
 	 */
-	Cell Program::atom(const std::string& token) {
+	Cell Program::atom(const string& token) {
 		if (token[0] == '#') {
 			const auto& boolid = token[1];
 			bool val = (boolid == 't' || boolid == 'T');
@@ -972,7 +972,7 @@ namespace elisp {
 		std::vector<std::vector<Cell>> exprStack; // The current stack of nested list expressions.
 		exprStack.emplace_back(); // top-level scope
 
-		for (std::string token = stream.nextToken(); !token.empty(); token = stream.nextToken()) {
+		for (string token = stream.nextToken(); !token.empty(); token = stream.nextToken()) {
 			if (token == "(") {
 				// Push a new scope onto the stack.
 				exprStack.emplace_back();
@@ -1000,7 +1000,7 @@ namespace elisp {
 		return read(tokStream);
 	}
 
-	std::string Program::to_string(Cell exp) {
+	string Program::to_string(Cell exp) {
 		if (exp == nullptr)
 			return "'()";
 
