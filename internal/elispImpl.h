@@ -116,7 +116,6 @@ namespace elisp {
 	}
 	// }}}
 
-	////////////////////////////////////////////////////////////////////////////////
 	// Util {{{
 	bool cell_to_bool(Cell cell) {
 		return (cell != empty_list and (cell->type != kCellType_bool || static_cast<bool_cell*>(cell.get())->value));
@@ -226,8 +225,8 @@ namespace elisp {
 	struct set_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct define_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct lambda_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
-	/*
 	struct begin_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
+	/*
 	struct let_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct display_proc : public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
 	struct exit_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env) { exit(0); } };
@@ -247,10 +246,10 @@ namespace elisp {
 			{"set!",	std::make_shared< set_proc		>()},
 			{"define", 	std::make_shared< define_proc	>()},
 			{"lambda", 	std::make_shared< lambda_proc	>()},
+			{"begin", 	std::make_shared< begin_proc	>()},
 		/*
 			{">", 		std::make_shared< greater_proc	>()},
 			{"<", 		std::make_shared< less_proc		>()},
-			{"begin", 	std::make_shared< begin_proc	>()},
 			{"let",		std::make_shared< let_proc		>()},
 			{"display", std::make_shared< display_proc	>()},
 			{"exit", 	std::make_shared< exit_proc		>()},
@@ -829,20 +828,20 @@ namespace elisp {
 		return cell;
 	}
 
-
-#if 0 //{{{
-	inline Cell begin_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
+	inline Cell begin_proc::evalProc(shared_ptr<cons_cell> args, Env env) {
 		verifyCell(args, "begin");
 
-		shared_ptr<cons_cell> currentCell = args;
-		Cell value = empty_list;
+		auto currentCell = args;
+		auto value = env->eval(currentCell->car);
+		currentCell = currentCell->cdr;
 		while (currentCell) {
-			value = env.eval(currentCell->car);
+			value = env->eval(currentCell->car);
 			currentCell = currentCell->cdr;
 		}
 		return value;
 	}
 
+#if 0 //{{{
 	inline Cell let_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
 		verifyCell(args, "let");
 
