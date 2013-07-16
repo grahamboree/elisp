@@ -206,16 +206,14 @@ namespace elisp {
 	void add_globals(Env env); // Forward-declared because the test cases need to set up Environments.
 
 	namespace procedures { // {{{
-		//namespace procHelpers {
-			double getOpValue(Cell inOp) {
-				trueOrDie((inOp->type == kCellType_number), "Expected only number arguments");
-				return static_cast<number_cell*>(inOp.get())->value;
-			}
+		double GetNumericValue(Cell inOp) {
+			trueOrDie((inOp->type == kCellType_number), "Expected only number arguments");
+			return static_cast<number_cell*>(inOp.get())->value;
+		}
 
-			void verifyCell(shared_ptr<cons_cell> inCell, string methodName) {
-				trueOrDie(inCell, "Insufficient arguments provided to " + methodName + ".");
-			}
-		//}
+		void verifyCell(shared_ptr<cons_cell> inCell, string methodName) {
+			trueOrDie(inCell, "Insufficient arguments provided to " + methodName + ".");
+		}
 
 		Cell add(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "+");
@@ -223,7 +221,7 @@ namespace elisp {
 			shared_ptr<cons_cell> currentCell = args;
 			double result = 0.0;
 			while(currentCell) {
-				result += getOpValue(env->eval(currentCell->car));
+				result += GetNumericValue(env->eval(currentCell->car));
 				currentCell = currentCell->cdr;
 			}
 			
@@ -294,14 +292,14 @@ namespace elisp {
 
 			shared_ptr<cons_cell> currentCell = args;
 
-			double result = getOpValue(env->eval(currentCell->car));
+			double result = GetNumericValue(env->eval(currentCell->car));
 			currentCell = currentCell->cdr;
 
 			if (!currentCell)
 				return std::make_shared<number_cell>(-result);
 
 			while(currentCell) {
-				result -= getOpValue(env->eval(currentCell->car));
+				result -= GetNumericValue(env->eval(currentCell->car));
 				currentCell = currentCell->cdr;
 			}
 
@@ -365,7 +363,7 @@ namespace elisp {
 			double result = 1.0;
 			auto currentCell = args;
 			while(currentCell) {
-				result *= getOpValue(env->eval(currentCell->car));
+				result *= GetNumericValue(env->eval(currentCell->car));
 				currentCell = currentCell->cdr;
 			}
 
@@ -419,14 +417,14 @@ namespace elisp {
 			verifyCell(args, "/");
 
 			auto currentCell = args;
-			double value = getOpValue(env->eval(currentCell->car));
+			double value = GetNumericValue(env->eval(currentCell->car));
 			currentCell = currentCell->cdr;
 
 			if (!currentCell)
 				return std::make_shared<number_cell>(1.0 / value);
 
 			while (currentCell) {
-				value /= getOpValue(env->eval(currentCell->car));
+				value /= GetNumericValue(env->eval(currentCell->car));
 				currentCell = currentCell->cdr;
 			}
 
@@ -484,14 +482,14 @@ namespace elisp {
 
 			auto currentCell = args;
 
-			double value = getOpValue(env->eval(currentCell->car));
+			double value = GetNumericValue(env->eval(currentCell->car));
 			currentCell = currentCell->cdr;
 			verifyCell(currentCell, "=");
 
 			// No early out to ensure all args are numbers.
 			bool result = true;
 			while (currentCell) {
-				result = result && (value == getOpValue(env->eval(currentCell->car)));
+				result = result && (value == GetNumericValue(env->eval(currentCell->car)));
 				currentCell = currentCell->cdr;
 			}
 			return std::make_shared<bool_cell>(result);
@@ -790,29 +788,28 @@ namespace elisp {
 			return value;
 		}
 
-#if 0 //{{{
-		inline Cell let_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
+		Cell let(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "let");
 
-			shared_ptr<cons_cell> currentCell = args;
-			trueOrDie(currentCell->car->type == kCellType_cons, "The second argument to \"let\" must be a list of lists.");
-			shared_ptr<cons_cell> bindings = static_cast<list_cell*>(currentCell->car);
+			auto currentCell = args;
+			trueOrDie(currentCell->car->type == kCellType_cons, "The first argument to \"let\" must be a list of lists.");
+			auto bindings = std::static_pointer_cast<cons_cell>(currentCell->car);
 
 			Env newEnv = std::make_shared<Environment>(env);
 
-			shared_ptr<cons_cell> currentBinding = bindings;
+			auto currentBinding = bindings;
 			while (currentBinding) {
-				trueOrDie(currentBinding->car->type == kCellType_cons, "The second argument to \"let\" must be a list of lists.");
-				shared_ptr<cons_cell> currentBindingPair = static_cast<cons_cell*>(currentBinding->car);
+				trueOrDie(currentBinding->car->type == kCellType_cons, "The first argument to \"let\" must be a list of lists.");
+				auto currentBindingPair = std::static_pointer_cast<cons_cell>(currentBinding->car);
 
 				trueOrDie(currentBindingPair->car->type == kCellType_symbol, "First argument in a binding expression must be a symbol");
 
-				symbol_cell* var = static_cast<symbol_cell*>(currentBindingPair->car);
+				auto var = std::static_pointer_cast<symbol_cell>(currentBindingPair->car);
 				Cell exp = currentBindingPair->cdr->car;
 
 				trueOrDie(!currentBindingPair->cdr->cdr, "Too many arguments in binding expression.");
 
-				newEnv->mSymbolMap[var->identifier] = env.eval(exp);
+				newEnv->mSymbolMap[var->identifier] = env->eval(exp);
 
 				currentBinding = currentBinding->cdr;
 			}
@@ -826,14 +823,15 @@ namespace elisp {
 			return returnVal;
 		}
 
-		inline Cell display_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
+#if 0 //{{{
+		Cell display(shared_ptr<cons_cell> args, Environment& env) {
 			shared_ptr<cons_cell> currentArgument = args;
 			for (; currentArgument; currentArgument = currentArgument->cdr) 
 				std::cout << env.eval(currentArgument->car) << std::endl;
 			return empty_list;
 		}
 
-		inline Cell greater_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
+		inline Cell greater(shared_ptr<cons_cell> args, Environment& env) {
 			trueOrDie(args && args->cdr, "Function > requires at least two arguments");
 
 			shared_ptr<cons_cell> currentArgument = args;
@@ -865,7 +863,7 @@ namespace elisp {
 			return new bool_cell(result);
 		}
 
-		inline Cell less_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
+		inline Cell less(shared_ptr<cons_cell> args, Environment& env) {
 			trueOrDie(args && args->cdr, "Function < requires at least two arguments");
 
 			shared_ptr<cons_cell> currentArgument = args;
@@ -913,12 +911,12 @@ namespace elisp {
 			{"define", 	std::make_shared<proc_cell>(define)},
 			{"lambda", 	std::make_shared<proc_cell>(lambda)},
 			{"begin", 	std::make_shared<proc_cell>(begin)},
+			{"let",		std::make_shared<proc_cell>(let)},
 		/*
-			{">", 		std::make_shared< greater_proc	>()},
-			{"<", 		std::make_shared< less_proc		>()},
-			{"let",		std::make_shared< let_proc		>()},
-			{"display", std::make_shared< display_proc	>()},
-			{"exit", 	std::make_shared< exit_proc		>()},
+			{">", 		std::make_shared< greater	>()},
+			{"<", 		std::make_shared< less		>()},
+			{"display", std::make_shared< display	>()},
+			{"exit", 	std::make_shared< exit		>()},
 		*/
 		});
 	}
