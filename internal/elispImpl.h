@@ -9,6 +9,7 @@ namespace elisp {
 	// Assertion functions
 	void die(string message) { throw std::logic_error(message); }
 	template<typename T> void trueOrDie(T condition, string message) { if (!condition) die(message); }
+	shared_ptr<cons_cell> makeList(vector<Cell> list); // Forward-declared because it's used in lambda_cell::eval
 
 	// Cells {{{
 	inline cell_t::cell_t(eCellType inType)
@@ -54,6 +55,7 @@ namespace elisp {
 	lambda_cell::lambda_cell(Env outerEnv)
 	: cell_t(kCellType_lambda)
 	, env(outerEnv)
+	, mVarargsName(nullptr)
 	{
 	}
 

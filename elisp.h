@@ -18,7 +18,7 @@ namespace elisp {
 	using std::vector;
 	using std::shared_ptr;
 
-	struct cell_t;
+	class cell_t;
 	class Environment;
 	class TokenStream;
 
@@ -107,17 +107,20 @@ namespace elisp {
 	};
 
 	/// Cell type base class
-	struct cell_t {
-		eCellType type; // TODO this shouldn't be public.
+	class cell_t {
+	public:
 		virtual ~cell_t() {}
 		
 		/// Used by the writer to print the string representation of code.
 		virtual operator string() = 0;
 	protected:
 		cell_t(eCellType inType);
+	public:
+		eCellType type; // TODO this shouldn't be public.
 	};
 
-	struct bool_cell : public cell_t {
+	class bool_cell : public cell_t {
+	public:
 		template<typename T>
 		bool_cell(T inValue);
 		bool_cell(bool inValue);
@@ -128,7 +131,8 @@ namespace elisp {
 		bool value; // TODO this shouldn't be public.
 	};
 
-	struct number_cell : public cell_t {
+	class number_cell : public cell_t {
+	public:
 		number_cell(double inValue);
 		virtual ~number_cell() {}
 		virtual operator string(); 
@@ -137,7 +141,8 @@ namespace elisp {
 		string valueString; // TODO this shouldn't be public.
 	};
 
-	struct char_cell : public cell_t { 
+	class char_cell : public cell_t { 
+	public:
 		char_cell(char inValue);
 		virtual ~char_cell() {}
 		virtual operator string();
@@ -145,7 +150,8 @@ namespace elisp {
 		char value; // TODO this shouldn't be public.
 	};
 
-	struct string_cell : public cell_t {
+	class string_cell : public cell_t {
+	public:
 		string_cell(string inVal) :cell_t(kCellType_string), value(inVal) {}
 		virtual ~string_cell() {}
 		virtual operator string() { return value; }
@@ -153,7 +159,8 @@ namespace elisp {
 		string value; // TODO this shouldn't be public.
 	};
 
-	struct symbol_cell : public cell_t {
+	class symbol_cell : public cell_t {
+	public:
 		symbol_cell(string id) :cell_t(kCellType_symbol), identifier(id) {}
 		virtual ~symbol_cell() {}
 		virtual operator string() { return identifier; }
@@ -161,21 +168,22 @@ namespace elisp {
 		string identifier; // TODO this shouldn't be public.
 	};
 
-	struct cons_cell : public cell_t, public std::enable_shared_from_this<cons_cell> {
+	class cons_cell : public cell_t, public std::enable_shared_from_this<cons_cell> {
+	public:
 		cons_cell(Cell inCar, shared_ptr<cons_cell> inCdr);
 		virtual ~cons_cell() {}
 		virtual operator string();
 	//private:
 		Cell car; // TODO this shouldn't be public.
 		shared_ptr<cons_cell> cdr; // TODO this shouldn't be public and shouldn't be restricted to cons_cell's.
-
 	};
 	shared_ptr<cons_cell> empty_list = nullptr;
 
 	/**
 	 * Wrapper for a built-in procedure not expressed in the langauge.
 	 */
-	struct proc_cell : public cell_t {
+	class proc_cell : public cell_t {
+	public:
 		proc_cell(std::function<Cell(shared_ptr<cons_cell>, Env)> procedure);
 		virtual ~proc_cell() {}
 		virtual operator string();
@@ -187,7 +195,8 @@ namespace elisp {
 	/**
 	 * Structure of a function defined in the langauge.
 	 */
-	struct lambda_cell : public cell_t {
+	class lambda_cell : public cell_t {
+	public:
 		lambda_cell(Env outerEnv);
 		virtual ~lambda_cell() {}
 
@@ -198,7 +207,7 @@ namespace elisp {
 		Env env; // TODO this shouldn't be public.
 		vector<shared_ptr<symbol_cell>> mParameters; // 0 or more arguments. TODO this shouldn't be public.
 		vector<Cell> 					mBodyExpressions; // 1 or more body statements. TODO this shouldn't be public. 
-		shared_ptr<symbol_cell> 		mVarargsName = nullptr; // TODO this shouldn't be public. 
+		shared_ptr<symbol_cell> 		mVarargsName; // TODO this shouldn't be public. 
 	};
 }
 
