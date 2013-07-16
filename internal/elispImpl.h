@@ -6,6 +6,10 @@
 #pragma once
 
 namespace elisp {
+	// Assertion functions
+	void die(string message) { throw std::logic_error(message); }
+	template<typename T> void trueOrDie(T condition, string message) { if (!condition) die(message); }
+
 	// Cells {{{
 	inline cell_t::cell_t(eCellType inType)
 	: type(inType)
@@ -169,10 +173,17 @@ namespace elisp {
 	// }}}
 
 	// Util {{{
+	/**
+	 * Converts a Cell to a bool.  Handles nullptr which is used to
+	 * indicate an empty list.
+	 */
 	bool cell_to_bool(Cell cell) {
 		return (cell != empty_list and (cell->type != kCellType_bool || static_cast<bool_cell*>(cell.get())->value));
 	}
 
+	/**
+	 * Replaces all occurances of \p from with \p to in \p str
+	 */
 	void replaceAll(string& str, const string& from, const string& to) {
 		string::size_type pos = 0;
 		while((pos = str.find(from, pos)) != string::npos) {
@@ -181,6 +192,9 @@ namespace elisp {
 		}
 	}
 
+	/**
+	 * Returns \c true if \p inValue is a string representation of a number, \c false otherwise.
+	 */
 	bool isNumber(string inValue) {
 		string::const_iterator it = inValue.begin();
 		bool hasRadix = false;
@@ -199,6 +213,12 @@ namespace elisp {
 		return false;
 	}
 
+	/**
+	 * A helper that creates a lisp list given a vector of the list's contents.
+	 *
+	 * A convenient use-case:
+	 * cons_cell* cons_cell = makeList({ new symbol_cell("+"), new number_cell(1), new number_cell(2)});
+	 */
 	shared_ptr<cons_cell> makeList(vector<Cell> list) {
 		shared_ptr<cons_cell> result;
 		vector<Cell>::const_reverse_iterator iter;

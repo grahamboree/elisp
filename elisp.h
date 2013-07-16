@@ -26,8 +26,8 @@ namespace elisp {
 	typedef shared_ptr<Environment> Env;
 
 	/*--------------------------------------------------------------------------------*/
-	/**
-	 * Program
+	/** Program
+	 * Represents a discrete execution environment for elisp.
 	 */
 	class Program {
 	public:
@@ -53,7 +53,25 @@ namespace elisp {
 
 	/*--------------------------------------------------------------------------------*/
 	/**
-	 * Environment
+	 * TokenStream
+	 * A wrapper around std::istream that allows you to grab individual tokens lazily.
+	 */
+	class TokenStream {
+	public:
+		TokenStream(std::istream& stream);
+
+		/** Gets the next token, or returns the empty string to indicate EOF */
+		std::string nextToken();
+	private:
+		static const std::regex reg;
+		std::istream& is;
+		std::string line;
+	};
+
+	/*--------------------------------------------------------------------------------*/
+	/** Environment
+	 * A symbol mapping environment.  Designed as a tree where each node
+	 * represents a scope which can override the parent scope bindings.
 	 */
 	class Environment : public std::enable_shared_from_this<Environment> {
 	public:
@@ -70,8 +88,10 @@ namespace elisp {
 	public: // TODO This shouldn't be public.
 		std::map<string, Cell> mSymbolMap;
 	};
-	
+
 	/*--------------------------------------------------------------------------------*/
+	// Cells
+	
 	/// Data types in elisp
 	enum eCellType {
 		kCellType_bool,
@@ -179,54 +199,6 @@ namespace elisp {
 		vector<shared_ptr<symbol_cell>> mParameters; // 0 or more arguments. TODO this shouldn't be public.
 		vector<Cell> 					mBodyExpressions; // 1 or more body statements. TODO this shouldn't be public. 
 		shared_ptr<symbol_cell> 		mVarargsName = nullptr; // TODO this shouldn't be public. 
-	};
-
-	/*--------------------------------------------------------------------------------*/
-	// Utility methods
-	
-	// Assertion functions
-	void die(string message) { throw std::logic_error(message); }
-	template<typename T> void trueOrDie(T condition, string message) { if (!condition) die(message); }
-
-	/**
-	 * Converts a Cell to a bool.  Handles nullptr which is used to
-	 * indicate an empty list.
-	 */
-	bool cell_to_bool(Cell cell);
-
-	/**
-	 * Replaces all occurances of \p from with \p to in \p str
-	 */
-	void replaceAll(string& str, const string& from, const string& to);
-
-	/**
-	 * Returns \c true if \p inValue is a string representation of a number, \c false otherwise.
-	 */
-	bool isNumber(string inValue);
-
-	/**
-	 * A helper that creates a lisp list given a vector of the list's contents.
-	 *
-	 * A convenient use-case:
-	 * cons_cell* cons_cell = makeList({ new symbol_cell("+"), new number_cell(1), new number_cell(2)});
-	 */
-	shared_ptr<cons_cell> makeList(std::vector<Cell> list);
-
-	/*--------------------------------------------------------------------------------*/
-	/**
-	 * TokenStream
-	 * A wrapper around std::istream that allows you to grab individual tokens lazily.
-	 */
-	class TokenStream {
-	public:
-		TokenStream(std::istream& stream);
-
-		/** Gets the next token, or returns the empty string to indicate EOF */
-		std::string nextToken();
-	private:
-		static const std::regex reg;
-		std::istream& is;
-		std::string line;
 	};
 }
 
