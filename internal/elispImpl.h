@@ -900,18 +900,19 @@ namespace elisp {
 	} // }}}
 	
 	void add_globals(Env env) {
+		using namespace procedures;
 		env->mSymbolMap.insert({
-			{"+", 		std::make_shared<proc_cell>(procedures::add)},
-			{"-", 		std::make_shared<proc_cell>(procedures::sub)},
-			{"*", 		std::make_shared<proc_cell>(procedures::mult)},
-			{"/", 		std::make_shared<proc_cell>(procedures::div)},
-			{"=", 		std::make_shared<proc_cell>(procedures::eq)},
-			{"if", 		std::make_shared<proc_cell>(procedures::if_then_else)},
-			{"quote", 	std::make_shared<proc_cell>(procedures::quote)},
-			{"set!",	std::make_shared<proc_cell>(procedures::set)},
-			{"define", 	std::make_shared<proc_cell>(procedures::define)},
-			{"lambda", 	std::make_shared<proc_cell>(procedures::lambda)},
-			{"begin", 	std::make_shared<proc_cell>(procedures::begin)},
+			{"+", 		std::make_shared<proc_cell>(add)},
+			{"-", 		std::make_shared<proc_cell>(sub)},
+			{"*", 		std::make_shared<proc_cell>(mult)},
+			{"/", 		std::make_shared<proc_cell>(div)},
+			{"=", 		std::make_shared<proc_cell>(eq)},
+			{"if", 		std::make_shared<proc_cell>(if_then_else)},
+			{"quote", 	std::make_shared<proc_cell>(quote)},
+			{"set!",	std::make_shared<proc_cell>(set)},
+			{"define", 	std::make_shared<proc_cell>(define)},
+			{"lambda", 	std::make_shared<proc_cell>(lambda)},
+			{"begin", 	std::make_shared<proc_cell>(begin)},
 		/*
 			{">", 		std::make_shared< greater_proc	>()},
 			{"<", 		std::make_shared< less_proc		>()},
