@@ -823,14 +823,14 @@ namespace elisp {
 			return returnVal;
 		}
 
-#if 0 //{{{
-		Cell display(shared_ptr<cons_cell> args, Environment& env) {
-			shared_ptr<cons_cell> currentArgument = args;
+		Cell display(shared_ptr<cons_cell> args, Env env) {
+			auto currentArgument = args;
 			for (; currentArgument; currentArgument = currentArgument->cdr) 
-				std::cout << env.eval(currentArgument->car) << std::endl;
+				std::cout << env->eval(currentArgument->car) << std::endl;
 			return empty_list;
 		}
 
+#if 0 //{{{
 		inline Cell greater(shared_ptr<cons_cell> args, Environment& env) {
 			trueOrDie(args && args->cdr, "Function > requires at least two arguments");
 
@@ -912,10 +912,10 @@ namespace elisp {
 			{"lambda", 	std::make_shared<proc_cell>(lambda)},
 			{"begin", 	std::make_shared<proc_cell>(begin)},
 			{"let",		std::make_shared<proc_cell>(let)},
+			{"display", std::make_shared<proc_cell>(display)},
 		/*
 			{">", 		std::make_shared< greater	>()},
 			{"<", 		std::make_shared< less		>()},
-			{"display", std::make_shared< display	>()},
 			{"exit", 	std::make_shared< exit		>()},
 		*/
 		});
