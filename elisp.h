@@ -18,18 +18,43 @@ namespace elisp {
 	using std::vector;
 	using std::shared_ptr;
 
-	// Assertion functions
-	void die(string message) { throw std::logic_error(message); }
-	template<typename T> void trueOrDie(T condition, string message) { if (!condition) die(message); }
-
 	struct cell_t;
-	typedef std::shared_ptr<cell_t> Cell;
-
 	class Environment;
-	typedef std::shared_ptr<Environment> Env;
+	class TokenStream;
 
-	////////////////////////////////////////////////////////////////////////////////
-	// Environment
+	typedef shared_ptr<cell_t> Cell;
+	typedef shared_ptr<Environment> Env;
+
+	/*--------------------------------------------------------------------------------*/
+	/**
+	 * Program
+	 */
+	class Program {
+	public:
+		Program();
+
+		/// Eval a string of code and give the result as a string.
+		string runCode(string inCode);
+
+		/// Given a stream, read and eval the code read from the stream.
+		string runCode(TokenStream& stream);
+
+		/// Read eval print loop.
+		void repl(string prompt = "elisp> ");
+
+		static Cell 		atom(const std::string& token);
+		static vector<Cell> read(TokenStream& stream);
+		static vector<Cell> read(string s);
+		static string 		to_string(Cell exp);
+
+	private:
+		Env global_env;
+	};
+
+	/*--------------------------------------------------------------------------------*/
+	/**
+	 * Environment
+	 */
 	class Environment : public std::enable_shared_from_this<Environment> {
 	public:
 		Environment();
@@ -42,12 +67,11 @@ namespace elisp {
 	private:
 		Env outer;
 
-	public:
+	public: // TODO This shouldn't be public.
 		std::map<string, Cell> mSymbolMap;
 	};
 	
-	////////////////////////////////////////////////////////////////////////////////
-	// Cell types
+	/*--------------------------------------------------------------------------------*/
 	/// Data types in elisp
 	enum eCellType {
 		kCellType_bool,
@@ -64,89 +88,110 @@ namespace elisp {
 
 	/// Cell type base class
 	struct cell_t {
-		eCellType type;
-
+		eCellType type; // TODO this shouldn't be public.
 		virtual ~cell_t() {}
 		
+		/// Used by the writer to print the string representation of code.
 		virtual operator string() = 0;
-		operator bool();
 	protected:
 		cell_t(eCellType inType);
 	};
 
 	struct bool_cell : public cell_t {
-		bool value;
-		template<typename T> bool_cell(T inValue) :cell_t(kCellType_bool), value(inValue) {}
-		bool_cell(bool inValue) :cell_t(kCellType_bool), value(inValue) {}
+		template<typename T>
+		bool_cell(T inValue);
+		bool_cell(bool inValue);
 		virtual ~bool_cell() {}
-		virtual operator string() { return value ? "#t" : "#f"; }
+
+		virtual operator string();
+	//private:
+		bool value; // TODO this shouldn't be public.
 	};
 
 	struct number_cell : public cell_t {
-		string valueString;
-		double value;
-		number_cell(double inValue) :cell_t(kCellType_number), value(inValue) {}
+		number_cell(double inValue);
 		virtual ~number_cell() {}
 		virtual operator string(); 
+	//private:
+		double value; // TODO this shouldn't be public.
+		string valueString; // TODO this shouldn't be public.
 	};
 
 	struct char_cell : public cell_t { 
-		char value;
-		char_cell(char inValue) :cell_t(kCellType_char), value(inValue) {}
+		char_cell(char inValue);
 		virtual ~char_cell() {}
-		virtual operator string() { std::ostringstream ss; ss << value; return ss.str(); }
+		virtual operator string();
+	//private:
+		char value; // TODO this shouldn't be public.
 	};
 
 	struct string_cell : public cell_t {
-		string value;
 		string_cell(string inVal) :cell_t(kCellType_string), value(inVal) {}
 		virtual ~string_cell() {}
 		virtual operator string() { return value; }
+	//private:
+		string value; // TODO this shouldn't be public.
 	};
 
 	struct symbol_cell : public cell_t {
-		string identifier;
 		symbol_cell(string id) :cell_t(kCellType_symbol), identifier(id) {}
 		virtual ~symbol_cell() {}
 		virtual operator string() { return identifier; }
+	//private:
+		string identifier; // TODO this shouldn't be public.
 	};
 
 	struct cons_cell : public cell_t, public std::enable_shared_from_this<cons_cell> {
-		Cell car;
-		shared_ptr<cons_cell> cdr;
-
 		cons_cell(Cell inCar, shared_ptr<cons_cell> inCdr);
 		virtual ~cons_cell() {}
 		virtual operator string();
+	//private:
+		Cell car; // TODO this shouldn't be public.
+		shared_ptr<cons_cell> cdr; // TODO this shouldn't be public and shouldn't be restricted to cons_cell's.
+
 	};
 	shared_ptr<cons_cell> empty_list = nullptr;
 
+	/**
+	 * Wrapper for a built-in procedure not expressed in the langauge.
+	 */
 	struct proc_cell : public cell_t {
-		proc_cell(std::function<Cell(shared_ptr<cons_cell>, Env)> procedure) :cell_t(kCellType_procedure), mProcedure(procedure) {}
+		proc_cell(std::function<Cell(shared_ptr<cons_cell>, Env)> procedure);
 		virtual ~proc_cell() {}
-
-		Cell evalProc(shared_ptr<cons_cell> args, Env env) { return mProcedure(args, env); };
-		virtual operator string() { return "#procedure"; }
-
+		virtual operator string();
+		Cell evalProc(shared_ptr<cons_cell> args, Env env);
 	protected:
 		std::function<Cell(shared_ptr<cons_cell>, Env)> mProcedure;
 	};
 
+	/**
+	 * Structure of a function defined in the langauge.
+	 */
 	struct lambda_cell : public cell_t {
-		Env env;
-		lambda_cell(Env outerEnv) :cell_t(kCellType_lambda), env(outerEnv) {}
+		lambda_cell(Env outerEnv);
 		virtual ~lambda_cell() {}
 
 		virtual Cell eval(shared_ptr<cons_cell> args, Env currentEnv);
 		virtual operator string();
 
-		vector<shared_ptr<symbol_cell>> mParameters; // 0 or more arguments
-		vector<Cell> 		mBodyExpressions; // 1 or more body statements.
-		shared_ptr<symbol_cell> mVarargsName = nullptr;
+	//protected:
+		Env env; // TODO this shouldn't be public.
+		vector<shared_ptr<symbol_cell>> mParameters; // 0 or more arguments. TODO this shouldn't be public.
+		vector<Cell> 					mBodyExpressions; // 1 or more body statements. TODO this shouldn't be public. 
+		shared_ptr<symbol_cell> 		mVarargsName = nullptr; // TODO this shouldn't be public. 
 	};
 
-	////////////////////////////////////////////////////////////////////////////////
-	// Util.h
+	/*--------------------------------------------------------------------------------*/
+	// Utility methods
+	
+	// Assertion functions
+	void die(string message) { throw std::logic_error(message); }
+	template<typename T> void trueOrDie(T condition, string message) { if (!condition) die(message); }
+
+	/**
+	 * Converts a Cell to a bool.  Handles nullptr which is used to
+	 * indicate an empty list.
+	 */
 	bool cell_to_bool(Cell cell);
 
 	/**
@@ -167,55 +212,21 @@ namespace elisp {
 	 */
 	shared_ptr<cons_cell> makeList(std::vector<Cell> list);
 
-
-	////////////////////////////////////////////////////////////////////////////////
-	// TokenStream
+	/*--------------------------------------------------------------------------------*/
 	/**
+	 * TokenStream
 	 * A wrapper around std::istream that allows you to grab individual tokens lazily.
 	 */
 	class TokenStream {
-		static const std::regex reg;
-		std::istream& is;
-		std::string line;
 	public:
 		TokenStream(std::istream& stream);
 
 		/** Gets the next token, or returns the empty string to indicate EOF */
 		std::string nextToken();
-	};
-
-	/** Tokenizer regex */
-	const std::regex TokenStream::reg(
-			R"(\s*)" // skip whitespace
-		   "("
-				",@|" 				// splice unquote
-				R"([\('`,\)]|)" 			// parens, quoting symbols
-				R"("(?:[\\].|[^\\"])*"|)" // string literals
-				";.*|" 				// comments
-				R"([^\s('"`,;)]*))" // identifiers
-			")");
-
-	////////////////////////////////////////////////////////////////////////////////
-	// Program
-	class Program {
-		Env global_env;
-
-	public:
-		Program();
-
-		/// Eval a string of code and give the result as a string.
-		string runCode(string inCode);
-
-		/// Given a stream, read and eval the code read from the stream.
-		string runCode(TokenStream& stream);
-
-		/// Read eval print loop.
-		void repl(string prompt = "elisp> ");
-
-		static auto atom(const std::string& token) 	-> Cell;
-		static auto read(TokenStream& stream) 		-> std::vector<Cell>;
-		static auto read(string s) 		 			-> std::vector<Cell>;
-		static auto to_string (Cell exp) 			-> string;
+	private:
+		static const std::regex reg;
+		std::istream& is;
+		std::string line;
 	};
 }
 

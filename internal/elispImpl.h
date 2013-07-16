@@ -47,6 +47,12 @@ namespace elisp {
 		return ss.str();
 	}
 
+	lambda_cell::lambda_cell(Env outerEnv)
+	: cell_t(kCellType_lambda)
+	, env(outerEnv)
+	{
+	}
+
 	Cell lambda_cell::eval(shared_ptr<cons_cell> args, Env currentEnv) {
 		Env newEnv = std::make_shared<Environment>(env);
 
@@ -110,6 +116,56 @@ namespace elisp {
 
 		return ss.str();
 	}
+
+	template<typename T>
+	inline bool_cell::bool_cell(T inValue)
+	: cell_t(kCellType_bool)
+	, value(inValue)
+	{
+	}
+
+	inline bool_cell::bool_cell(bool inValue)
+	:cell_t(kCellType_bool)
+	, value(inValue)
+	{
+	}
+
+	bool_cell::operator string() {
+		return value ? "#t" : "#f";
+	}
+
+	number_cell::number_cell(double inValue)
+	:cell_t(kCellType_number)
+	, value(inValue)
+	{
+	}
+
+	char_cell::char_cell(char inValue)
+	:cell_t(kCellType_char)
+	, value(inValue)
+	{
+	}
+
+	char_cell::operator string() {
+		std::ostringstream ss;
+		ss << value;
+		return ss.str();
+	}
+
+	proc_cell::proc_cell(std::function<Cell(shared_ptr<cons_cell>, Env)> procedure)
+	: cell_t(kCellType_procedure)
+	, mProcedure(procedure)
+	{
+	}
+
+	Cell proc_cell::evalProc(shared_ptr<cons_cell> args, Env env) {
+		return mProcedure(args, env);
+	};
+
+	proc_cell::operator string() {
+		return "#procedure";
+	}
+
 	// }}}
 
 	// Util {{{
@@ -1059,6 +1115,17 @@ namespace elisp {
 			cout << runCode(raw_input) << endl;
 		}
 	}
+
+	/** Tokenizer regex */
+	const std::regex TokenStream::reg(
+			R"(\s*)" // skip whitespace
+		   "("
+				",@|" 				// splice unquote
+				R"([\('`,\)]|)" 			// parens, quoting symbols
+				R"("(?:[\\].|[^\\"])*"|)" // string literals
+				";.*|" 				// comments
+				R"([^\s('"`,;)]*))" // identifiers
+			")");
 	// }}}
 }
 
