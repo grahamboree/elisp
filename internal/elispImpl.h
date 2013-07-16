@@ -830,13 +830,12 @@ namespace elisp {
 			return empty_list;
 		}
 
-#if 0 //{{{
-		inline Cell greater(shared_ptr<cons_cell> args, Environment& env) {
+		Cell greater(shared_ptr<cons_cell> args, Env env) {
 			trueOrDie(args && args->cdr, "Function > requires at least two arguments");
 
-			shared_ptr<cons_cell> currentArgument = args;
+			auto currentArgument = args;
 
-			Cell leftCell = env.eval(currentArgument->car);
+			Cell leftCell = env->eval(currentArgument->car);
 			Cell rightCell;
 
 			trueOrDie(leftCell->type == kCellType_number, "Function > accepts only numerical arguments");
@@ -845,11 +844,11 @@ namespace elisp {
 
 			bool result = true;
 			while(currentArgument) {
-				rightCell = env.eval(currentArgument->car);
+				rightCell = env->eval(currentArgument->car);
 				trueOrDie(rightCell->type == kCellType_number, "Function > accepts only numerical arguments");
 
-				double leftVal = static_cast<number_cell*>(leftCell)->value;
-				double rightVal = static_cast<number_cell*>(rightCell)->value;
+				double leftVal = GetNumericValue(leftCell);
+				double rightVal = GetNumericValue(rightCell);
 
 				result = result && (leftVal > rightVal);
 				if (!result)
@@ -860,9 +859,8 @@ namespace elisp {
 				currentArgument = currentArgument->cdr;
 			}
 
-			return new bool_cell(result);
+			return std::make_shared<bool_cell>(result);
 		}
-#endif // }}}
 
 		Cell less(shared_ptr<cons_cell> args, Env env) {
 			trueOrDie(args && args->cdr, "Function < requires at least two arguments");
@@ -914,10 +912,8 @@ namespace elisp {
 			{"let",		std::make_shared<proc_cell>(let)},
 			{"display", std::make_shared<proc_cell>(display)},
 			{"<", 		std::make_shared<proc_cell>(less)},
-		/*
-			{"exit", 	std::make_shared<proc_cell>(exit)},
-			{">", 		std::make_shared< greater	>()},
-		*/
+			{">", 		std::make_shared<proc_cell>(greater)},
+			//{"exit", 	std::make_shared<proc_cell>(exit)},
 		});
 	}
 	// }}}
