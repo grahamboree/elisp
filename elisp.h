@@ -122,14 +122,14 @@ namespace elisp {
 	shared_ptr<cons_cell> empty_list = nullptr;
 
 	struct proc_cell : public cell_t {
-		virtual Cell evalProc(shared_ptr<cons_cell> args, Env env) = 0;
+		proc_cell(std::function<Cell(shared_ptr<cons_cell>, Env)> procedure) :cell_t(kCellType_procedure), mProcedure(procedure) {}
+		virtual ~proc_cell() {}
+
+		Cell evalProc(shared_ptr<cons_cell> args, Env env) { return mProcedure(args, env); };
 		virtual operator string() { return "#procedure"; }
 
-		virtual ~proc_cell() {}
 	protected:
-		void verifyCell(shared_ptr<cons_cell> inCell, string methodName);
-
-		proc_cell() :cell_t(kCellType_procedure) {}
+		std::function<Cell(shared_ptr<cons_cell>, Env)> mProcedure;
 	};
 
 	struct lambda_cell : public cell_t {

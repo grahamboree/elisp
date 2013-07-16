@@ -25,10 +25,6 @@ namespace elisp {
 		return valueString;
 	}
 
-	void proc_cell::verifyCell(shared_ptr<cons_cell> inCell, string methodName) {
-		trueOrDie(inCell, "Insufficient arguments provided to " + methodName + ".");
-	}
-
 	cons_cell::cons_cell(Cell inCar, shared_ptr<cons_cell> inCdr)
 	: cell_t(kCellType_cons)
 	, car(inCar)
@@ -207,57 +203,19 @@ namespace elisp {
 	// }}}
 
 	// Prelude {{{
-	struct numerical_proc : public proc_cell {
-	protected:
+	
+	//namespace procHelpers {
 		double getOpValue(Cell inOp) {
 			trueOrDie((inOp->type == kCellType_number), "Expected only number arguments");
 			return static_cast<number_cell*>(inOp.get())->value;
 		}
-	};
 
-	struct add_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); virtual ~add_proc() {}};
-	struct sub_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); virtual ~sub_proc() {}};
-	struct mult_proc: public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); virtual ~mult_proc() {}};
-	struct div_proc : public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
-	struct eq_proc 	: public numerical_proc { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
-	struct if_proc 		: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
-	struct quote_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
-	struct set_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
-	struct define_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
-	struct lambda_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
-	struct begin_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
-	/*
-	struct let_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
-	struct display_proc : public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
-	struct exit_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env) { exit(0); } };
-	struct greater_proc : public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
-	struct less_proc 	: public proc_cell  { virtual Cell evalProc(shared_ptr<cons_cell> args, Env env); };
-	*/
+		void verifyCell(shared_ptr<cons_cell> inCell, string methodName) {
+			trueOrDie(inCell, "Insufficient arguments provided to " + methodName + ".");
+		}
+	//}
 
-	void add_globals(Env env) {
-		env->mSymbolMap.insert({
-			{"+", 		std::make_shared< add_proc		>()},
-			{"-", 		std::make_shared< sub_proc		>()},
-			{"*", 		std::make_shared< mult_proc		>()},
-			{"/", 		std::make_shared< div_proc		>()},
-			{"=", 		std::make_shared< eq_proc		>()},
-			{"if", 		std::make_shared< if_proc		>()},
-			{"quote", 	std::make_shared< quote_proc	>()},
-			{"set!",	std::make_shared< set_proc		>()},
-			{"define", 	std::make_shared< define_proc	>()},
-			{"lambda", 	std::make_shared< lambda_proc	>()},
-			{"begin", 	std::make_shared< begin_proc	>()},
-		/*
-			{">", 		std::make_shared< greater_proc	>()},
-			{"<", 		std::make_shared< less_proc		>()},
-			{"let",		std::make_shared< let_proc		>()},
-			{"display", std::make_shared< display_proc	>()},
-			{"exit", 	std::make_shared< exit_proc		>()},
-		*/
-		});
-	}
-
-	inline Cell add_proc::evalProc(shared_ptr<cons_cell> args, Env env) {
+	Cell add_proc(shared_ptr<cons_cell> args, Env env) {
 		verifyCell(args, "+");
 		
 		shared_ptr<cons_cell> currentCell = args;
@@ -268,13 +226,12 @@ namespace elisp {
 		}
 		
 		return std::make_shared<number_cell>(result);
-	}
+	};
 
 #ifdef ELISP_TEST // {{{
 	TEST_CASE("prelude/add", "+") {
 		Env testEnv = std::make_shared<Environment>();
 		add_globals(testEnv);
-		add_proc a;
 		Cell result;
 		number_cell* number;
 		auto oneVal = std::make_shared<number_cell>(1.0);
@@ -282,7 +239,7 @@ namespace elisp {
 		// One argument
 		auto oneArg = makeList({oneVal});
 		
-		result = a.evalProc(oneArg, testEnv);
+		result = add_proc(oneArg, testEnv);
 		REQUIRE(result->type == kCellType_number);
 		
 		number = static_cast<number_cell*>(result.get());
@@ -291,7 +248,7 @@ namespace elisp {
 		// Two arguments
 		auto twoArgs = makeList({oneVal, oneVal});
 		
-		result = a.evalProc(twoArgs, testEnv);
+		result = add_proc(twoArgs, testEnv);
 		REQUIRE(result->type == kCellType_number);
 		
 		number = static_cast<number_cell*>(result.get());
@@ -307,7 +264,7 @@ namespace elisp {
 			oneVal,
 			oneVal});
 		
-		result = a.evalProc(sevenArgs, testEnv);
+		result = add_proc(sevenArgs, testEnv);
 		REQUIRE(result->type == kCellType_number);
 		
 		number = static_cast<number_cell*>(result.get());
@@ -322,7 +279,7 @@ namespace elisp {
 				oneVal})
 			});
 		
-		result = a.evalProc(nested, testEnv);
+		result = add_proc(nested, testEnv);
 		REQUIRE(result->type == kCellType_number);
 		
 		number = static_cast<number_cell*>(result.get());
@@ -330,6 +287,7 @@ namespace elisp {
 	}
 #endif // }}}
 
+#if 0
 	inline Cell sub_proc::evalProc(shared_ptr<cons_cell> args, Env env) {
 		verifyCell(args, "-");
 
@@ -840,7 +798,7 @@ namespace elisp {
 		}
 		return value;
 	}
-
+#endif
 #if 0 //{{{
 	inline Cell let_proc::evalProc(shared_ptr<cons_cell> args, Environment& env) {
 		verifyCell(args, "let");
@@ -947,8 +905,33 @@ namespace elisp {
 
 		return new bool_cell(result);
 	}
-	// }}}
 #endif
+	
+	void add_globals(Env env) {
+		env->mSymbolMap.insert({
+			{"+", 		std::make_shared<proc_cell>(add_proc)},
+			/*
+			{"-", 		std::make_shared< sub_proc		>()},
+			{"*", 		std::make_shared< mult_proc		>()},
+			{"/", 		std::make_shared< div_proc		>()},
+			{"=", 		std::make_shared< eq_proc		>()},
+			{"if", 		std::make_shared< if_proc		>()},
+			{"quote", 	std::make_shared< quote_proc	>()},
+			{"set!",	std::make_shared< set_proc		>()},
+			{"define", 	std::make_shared< define_proc	>()},
+			{"lambda", 	std::make_shared< lambda_proc	>()},
+			{"begin", 	std::make_shared< begin_proc	>()},
+			*/
+		/*
+			{">", 		std::make_shared< greater_proc	>()},
+			{"<", 		std::make_shared< less_proc		>()},
+			{"let",		std::make_shared< let_proc		>()},
+			{"display", std::make_shared< display_proc	>()},
+			{"exit", 	std::make_shared< exit_proc		>()},
+		*/
+		});
+	}
+	// }}}
 
 	// TokenStream, writer, reader, and Program {{{
 	TokenStream::TokenStream(std::istream& stream) : is(stream) {}
