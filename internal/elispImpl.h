@@ -69,6 +69,8 @@ namespace elisp {
 			args = args->cdr;
 		}
 
+		// Either store the rest of the arguments in the variadic name,
+		// or error out that there were too many.
 		if (mVarargsName) {
 			vector<Cell> varargs;
 			while (args) {
@@ -76,8 +78,9 @@ namespace elisp {
 				args = args->cdr;
 			}
 			newEnv->mSymbolMap[mVarargsName->identifier] = makeList(varargs);
+		} else if (args) {
+			die("too many arguments specified to lambda");
 		}
-
 
 		// Evaluate the body expressions with the new environment.  Return the result of the last body expression.
 		Cell returnVal;
@@ -603,7 +606,6 @@ namespace elisp {
 			REQUIRE(result->type == kCellType_bool);
 			REQUIRE(cell_to_bool(result));
 		}
-
 #endif // }}}
 
 		Cell if_then_else(shared_ptr<cons_cell> args, Env env) {
@@ -632,6 +634,7 @@ namespace elisp {
 			Env testEnv = std::make_shared<Environment>();
 			add_globals(testEnv);
 
+			// Equal
 			auto result = if_then_else(makeList({
 					makeList({
 						std::make_shared<symbol_cell>("="),
@@ -643,6 +646,7 @@ namespace elisp {
 			auto number = std::static_pointer_cast<number_cell>(result);
 			REQUIRE(number->value == 1.0);
 
+			// Not Equal
 			result = if_then_else(makeList({
 					makeList({
 						std::make_shared<symbol_cell>("="),
@@ -654,6 +658,7 @@ namespace elisp {
 			number = std::static_pointer_cast<number_cell>(result);
 			REQUIRE(number->value == 2.0);
 
+			// Constant
 			result = if_then_else(makeList({
 					std::make_shared<bool_cell>(false),
 					std::make_shared<number_cell>(1.0),
@@ -662,6 +667,7 @@ namespace elisp {
 			number = std::static_pointer_cast<number_cell>(result);
 			REQUIRE(number->value == 2.0);
 
+			// Empty list
 			result = if_then_else(makeList({
 				std::make_shared<bool_cell>(empty_list),
 				std::make_shared<number_cell>(1.0),
