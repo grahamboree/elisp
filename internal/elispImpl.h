@@ -971,6 +971,10 @@ namespace elisp {
 
 			return std::make_shared<bool_cell>(result);
 		}
+
+		Cell exit(shared_ptr<cons_cell>, Env) {
+			::exit(0);
+		}
 	} // }}}
 	
 	void add_globals(Env env) {
@@ -991,7 +995,7 @@ namespace elisp {
 			{"display", std::make_shared<proc_cell>(display)},
 			{"<", 		std::make_shared<proc_cell>(less)},
 			{">", 		std::make_shared<proc_cell>(greater)},
-			//{"exit", 	std::make_shared<proc_cell>(exit)},
+			{"exit", 	std::make_shared<proc_cell>(exit)},
 		});
 	}
 	// }}}
@@ -1150,4 +1154,3 @@ namespace elisp {
 			")");
 	// }}}
 }
-
