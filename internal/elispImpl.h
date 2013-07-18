@@ -17,11 +17,11 @@ namespace elisp {
 	{
 	}
 
-	std::ostream& operator << (std::ostream& os, Cell obj) {
+	inline std::ostream& operator << (std::ostream& os, Cell obj) {
 		return (os << static_cast<string>(*obj));
 	}
 
-	number_cell::operator string() {
+	inline number_cell::operator string() {
 		if (valueString.empty()) {
 			std::ostringstream ss;
 			ss << ((value == (int)value) ? (int)value : value);
@@ -30,7 +30,7 @@ namespace elisp {
 		return valueString;
 	}
 
-	cons_cell::cons_cell(Cell inCar, shared_ptr<cons_cell> inCdr)
+	inline cons_cell::cons_cell(Cell inCar, shared_ptr<cons_cell> inCdr)
 	: cell_t(kCellType_cons)
 	, car(inCar)
 	, cdr(inCdr)
@@ -52,7 +52,7 @@ namespace elisp {
 		return ss.str();
 	}
 
-	lambda_cell::lambda_cell(Env outerEnv)
+	inline lambda_cell::lambda_cell(Env outerEnv)
 	: cell_t(kCellType_lambda)
 	, env(outerEnv)
 	, mVarargsName(nullptr)
@@ -136,39 +136,39 @@ namespace elisp {
 	{
 	}
 
-	bool_cell::operator string() {
+	inline bool_cell::operator string() {
 		return value ? "#t" : "#f";
 	}
 
-	number_cell::number_cell(double inValue)
+	inline number_cell::number_cell(double inValue)
 	:cell_t(kCellType_number)
 	, value(inValue)
 	{
 	}
 
-	char_cell::char_cell(char inValue)
+	inline char_cell::char_cell(char inValue)
 	:cell_t(kCellType_char)
 	, value(inValue)
 	{
 	}
 
-	char_cell::operator string() {
+	inline char_cell::operator string() {
 		std::ostringstream ss;
 		ss << value;
 		return ss.str();
 	}
 
-	proc_cell::proc_cell(std::function<Cell(shared_ptr<cons_cell>, Env)> procedure)
+	inline proc_cell::proc_cell(std::function<Cell(shared_ptr<cons_cell>, Env)> procedure)
 	: cell_t(kCellType_procedure)
 	, mProcedure(procedure)
 	{
 	}
 
-	Cell proc_cell::evalProc(shared_ptr<cons_cell> args, Env env) {
+	inline Cell proc_cell::evalProc(shared_ptr<cons_cell> args, Env env) {
 		return mProcedure(args, env);
 	};
 
-	proc_cell::operator string() {
+	inline proc_cell::operator string() {
 		return "#procedure";
 	}
 
@@ -179,14 +179,14 @@ namespace elisp {
 	 * Converts a Cell to a bool.  Handles nullptr which is used to
 	 * indicate an empty list.
 	 */
-	bool cell_to_bool(Cell cell) {
+	inline bool cell_to_bool(Cell cell) {
 		return (cell != empty_list and (cell->type != kCellType_bool || static_cast<bool_cell*>(cell.get())->value));
 	}
 
 	/**
 	 * Replaces all occurances of \p from with \p to in \p str
 	 */
-	void replaceAll(string& str, const string& from, const string& to) {
+	inline void replaceAll(string& str, const string& from, const string& to) {
 		string::size_type pos = 0;
 		while((pos = str.find(from, pos)) != string::npos) {
 			str.replace(pos, from.length(), to);
@@ -245,7 +245,7 @@ namespace elisp {
 		return mSymbolMap.find(var)->second;
 	}
 
-	inline Cell Environment::eval(Cell x) {
+	Cell Environment::eval(Cell x) {
 		trueOrDie(x != nullptr, "Missing procedure.  Original code was most likely (), which is illegal.");
 		
 		if (x->type == kCellType_symbol) {
@@ -977,6 +977,9 @@ namespace elisp {
 		}
 	} // }}}
 	
+	/**
+	 * Adds the standard prelude functions to the global environment.
+	 */
 	void add_globals(Env env) {
 		using namespace procedures;
 		env->mSymbolMap.insert({
@@ -1001,7 +1004,10 @@ namespace elisp {
 	// }}}
 
 	// TokenStream, writer, reader, and Program {{{
-	TokenStream::TokenStream(std::istream& stream) : is(stream) {}
+	TokenStream::TokenStream(std::istream& stream)
+	: is(stream)
+	{
+	}
 
 	string TokenStream::nextToken() {
 		if (line.empty() and !std::getline(is, line))
@@ -1076,13 +1082,13 @@ namespace elisp {
 	/**
 	 * Returns a list of top-level expressions.
 	 */
-	std::vector<Cell> Program::read(string s) {
+	inline std::vector<Cell> Program::read(string s) {
 		std::istringstream iss(s);
 		TokenStream tokStream(iss);
 		return read(tokStream);
 	}
 
-	string Program::to_string(Cell exp) {
+	inline string Program::to_string(Cell exp) {
 		if (exp == nullptr)
 			return "'()";
 
@@ -1091,7 +1097,10 @@ namespace elisp {
 		return ss.str();
 	}
 
-	Program::Program() { global_env = std::make_shared<Environment>(); add_globals(global_env); }
+	inline Program::Program() {
+		global_env = std::make_shared<Environment>();
+		add_globals(global_env);
+	}
 
 	/// Eval a string of code and give the result as a string.
 	inline string Program::runCode(string inCode) {
@@ -1101,7 +1110,7 @@ namespace elisp {
 	}
 
 	/// Given a stream, read and eval the code read from the stream.
-	inline string Program::runCode(TokenStream& stream) {
+	string Program::runCode(TokenStream& stream) {
 		using std::cerr;
 		using std::endl;
 
@@ -1123,7 +1132,7 @@ namespace elisp {
 	}
 
 	/// Read eval print loop.
-	inline void Program::repl(string prompt) {
+	void Program::repl(string prompt) {
 		using std::cout;
 		using std::endl;
 
