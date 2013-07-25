@@ -30,7 +30,7 @@ namespace elisp {
 		return valueString;
 	}
 
-	inline cons_cell::cons_cell(Cell inCar, shared_ptr<cons_cell> inCdr)
+	inline cons_cell::cons_cell(Cell inCar, Cell inCdr)
 	: cell_t(kCellType_cons)
 	, car(inCar)
 	, cdr(inCdr)
@@ -39,8 +39,8 @@ namespace elisp {
 
 	inline Cell cons_cell::GetCar() { return car; }
 	inline void cons_cell::SetCar(Cell newCar) { car = newCar; }
-	inline shared_ptr<cons_cell> cons_cell::GetCdr() { return cdr; }
-	inline void cons_cell::SetCdr(shared_ptr<cons_cell> newCdr) { cdr = newCdr; }
+	inline Cell cons_cell::GetCdr() { return cdr; }
+	inline void cons_cell::SetCdr(Cell newCdr) { cdr = newCdr; }
 
 	inline cons_cell::iterator cons_cell::begin() { return iterator(shared_from_this()); }
 	inline cons_cell::iterator cons_cell::end() { return iterator(empty_list); }
@@ -63,13 +63,17 @@ namespace elisp {
 	inline cons_cell::iterator::iterator(shared_ptr<cons_cell> startCell) : currentCell(startCell) {}
 
 	inline cons_cell::iterator& cons_cell::iterator::operator++() {
-		currentCell = currentCell->GetCdr();
+		trueOrDie(!currentCell->cdr or currentCell->cdr->GetType() == kCellType_cons,
+				"Attempting to iterate through a cons-list that does not contain a cons cell in the cdr position.");
+		currentCell = std::static_pointer_cast<cons_cell>(currentCell->cdr);
 		return (*this);
 	}
 
 	inline cons_cell::iterator cons_cell::iterator::operator++(int) {
 		iterator temp = *this;
-		currentCell = currentCell->cdr;
+		trueOrDie(!currentCell->cdr or currentCell->cdr->GetType() == kCellType_cons,
+				"Attempting to iterate through a cons-list that does not contain a cons cell in the cdr position.");
+		currentCell = std::static_pointer_cast<cons_cell>(currentCell->cdr);
 		return temp;
 	}
 
@@ -100,23 +104,22 @@ namespace elisp {
 		Env newEnv = std::make_shared<Environment>(env);
 
 		// Match the arguments to the parameters.
+		auto it = args->begin();
 		for (auto paramID : mParameters) {
-			trueOrDie(args != empty_list, "insufficient arguments provided to function");
+			trueOrDie(it != args->end(), "insufficient arguments provided to function");
 			newEnv->mSymbolMap[paramID->GetIdentifier()] = currentEnv->eval(args->GetCar());
-			args = args->GetCdr();
+			++it;
 		}
 
 		// Either store the rest of the arguments in the variadic name,
 		// or error out that there were too many.
 		if (mVarargsName) {
 			vector<Cell> varargs;
-			while (args) {
-				varargs.push_back(currentEnv->eval(args->GetCar()));
-				args = args->GetCdr();
-			}
+			for (;it != args->end();++it)
+				varargs.push_back(currentEnv->eval(*it));
 			newEnv->mSymbolMap[mVarargsName->GetIdentifier()] = makeList(varargs);
-		} else if (args) {
-			die("too many arguments specified to lambda");
+		} else if (it != args->end()) {
+			die("Too many arguments specified to lambda.");
 		}
 
 		// Evaluate the body expressions with the new environment.  Return the result of the last body expression.
@@ -309,10 +312,16 @@ namespace elisp {
 
 			if (callable->GetType() == kCellType_procedure) { 
 				// Eval the procedure with the rest of the arguments.
-				return static_cast<proc_cell*>(callable.get())->evalProc(listcell->GetCdr(), shared_from_this());
+				trueOrDie(listcell->GetCdr()->GetType() == kCellType_cons, "Cannot call a procedure with something that's not a cons-list.");
+				return static_cast<proc_cell*>(callable.get())->evalProc(
+						std::static_pointer_cast<cons_cell>(listcell->GetCdr()),
+						shared_from_this());
 			} else if (callable->GetType() == kCellType_lambda) { 
 				// Eval the lambda with the rest of the arguments.
-				return static_cast<lambda_cell*>(callable.get())->eval(listcell->GetCdr(), shared_from_this());
+				trueOrDie(listcell->GetCdr()->GetType() == kCellType_cons, "Cannot call a lambda with something that's not a cons-list.");
+				return static_cast<lambda_cell*>(callable.get())->eval(
+						std::static_pointer_cast<cons_cell>(listcell->GetCdr()),
+						shared_from_this());
 			}
 			die("Expected procedure or lambda as first element in an sexpression.");
 		}
@@ -329,8 +338,15 @@ namespace elisp {
 			return static_cast<number_cell*>(inOp.get())->GetValue();
 		}
 
-		void verifyCell(shared_ptr<cons_cell> inCell, string methodName) {
-			trueOrDie(inCell, "Insufficient arguments provided to " + methodName + ".");
+		void verifyCell(shared_ptr<cons_cell> inCell, string functionName) {
+			trueOrDie(inCell, "Insufficient arguments provided to " + functionName + ".");
+		}
+
+		void verifyCell(Cell inCell, string functionName) {
+			if (inCell and inCell->GetType() != kCellType_cons)
+				throw std::runtime_error("Attempting to verify non cons-cell.");
+			
+			trueOrDie(inCell, "Insufficient arguments provided to " + functionName + ".");
 		}
 
 		Cell add(shared_ptr<cons_cell> args, Env env) {
@@ -635,21 +651,21 @@ namespace elisp {
 #endif // }}}
 
 		Cell if_then_else(shared_ptr<cons_cell> args, Env env) {
-			auto currentCell = args;
+			auto it = args->begin();
 			
-			verifyCell(currentCell, "if");
-			Cell test = currentCell->GetCar();
-			currentCell = currentCell->GetCdr();
+			trueOrDie(it != args->end(), "Insufficient arguments provided to \"if\"");
+			Cell test = *it;
+			++it;
 
-			verifyCell(currentCell, "if");
-			Cell conseq = currentCell->GetCar();
-			currentCell = currentCell->GetCdr();
+			trueOrDie(it != args->end(), "Insufficient arguments provided to \"if\"");
+			Cell conseq = *it;
+			++it;
 
-			verifyCell(currentCell, "if");
-			Cell alt = currentCell->GetCar();
-			currentCell = currentCell->GetCdr();
+			trueOrDie(it != args->end(), "Insufficient arguments provided to \"if\"");
+			Cell alt = *it;
+			++it;
 
-			trueOrDie(currentCell == empty_list, "Too many arguments specified to \"if\"");
+			trueOrDie(it == args->end(), "Too many arguments specified to \"if\"");
 
 			return env->eval((cell_to_bool(env->eval(test)) ? conseq : alt));
 		}
@@ -721,20 +737,24 @@ namespace elisp {
 				std::make_shared<number_cell>(2.0)})}), testEnv);
 			REQUIRE(result->GetType() == kCellType_cons);
 			auto cons = std::static_pointer_cast<cons_cell>(result);
+			auto it = cons->begin();
 
-			REQUIRE(cons->GetCar()->GetType() == kCellType_symbol);
-			auto equalSymbol = std::static_pointer_cast<symbol_cell>(cons->GetCar());
+			REQUIRE((*it)->GetType() == kCellType_symbol);
+			auto equalSymbol = std::static_pointer_cast<symbol_cell>(*it);
 			REQUIRE(equalSymbol->GetIdentifier() == "=");
 
-			REQUIRE(cons->GetCdr()->GetCar()->GetType() == kCellType_number);
-			auto numberSymbol = std::static_pointer_cast<number_cell>(cons->GetCdr()->GetCar());
+			++it;
+			REQUIRE((*it)->GetType() == kCellType_number);
+			auto numberSymbol = std::static_pointer_cast<number_cell>(*it);
 			REQUIRE(numberSymbol->GetValue() == 1.0);
 
-			REQUIRE(cons->GetCdr()->GetCdr()->GetCar()->GetType() == kCellType_number);
-			numberSymbol = std::static_pointer_cast<number_cell>(cons->GetCdr()->GetCdr()->GetCar());
+			++it;
+			REQUIRE((*it)->GetType() == kCellType_number);
+			numberSymbol = std::static_pointer_cast<number_cell>(*it);
 			REQUIRE(numberSymbol->GetValue() == 2.0);
 
-			REQUIRE(cons->GetCdr()->GetCdr()->GetCdr() == empty_list);
+			++it;
+			REQUIRE(it == cons->end());
 		}
 #endif // }}}
 
@@ -742,8 +762,10 @@ namespace elisp {
 			verifyCell(args, "set!");
 			verifyCell(args->GetCdr(), "set!");
 
-			auto var = args->GetCar();
-			auto exp = args->GetCdr()->GetCar();
+			auto it = args->begin();
+			auto var = *it;
+			++it;
+			auto exp = *it;
 
 			trueOrDie(var->GetType() == kCellType_symbol, "set! requires a symbol as its first argument");
 			const auto& id = std::static_pointer_cast<symbol_cell>(var)->GetIdentifier();
@@ -834,7 +856,7 @@ namespace elisp {
 				++it;
 				env->mSymbolMap[varName] = env->eval(*it);
 
-				trueOrDie(args->GetCdr()->GetCdr() == empty_list, "define expects only 2 arguments when defining a variable binding.");
+				trueOrDie(++it == empty_list, "define expects only 2 arguments when defining a variable binding.");
 			} else {
 				die("Invalid first parameter passed to define.  Expected either a symbol or a list of symbols.");
 			}
@@ -930,13 +952,16 @@ namespace elisp {
 			for (auto binding : *bindings) {
 				trueOrDie(binding->GetType() == kCellType_cons, "The first argument to \"let\" must be a list of lists.");
 				auto currentBindingPair = std::static_pointer_cast<cons_cell>(binding);
+				auto bindingIt = currentBindingPair->begin();
 
-				trueOrDie(currentBindingPair->GetCar()->GetType() == kCellType_symbol, "First argument in a binding expression must be a symbol");
+				trueOrDie((*bindingIt)->GetType() == kCellType_symbol, "First argument in a binding expression must be a symbol");
 
-				auto var = std::static_pointer_cast<symbol_cell>(currentBindingPair->GetCar());
-				Cell exp = currentBindingPair->GetCdr()->GetCar();
+				auto var = std::static_pointer_cast<symbol_cell>(*bindingIt);
+				++bindingIt;
+				Cell exp = *bindingIt;
 
-				trueOrDie(!currentBindingPair->GetCdr()->GetCdr(), "Too many arguments in binding expression.");
+				++bindingIt;
+				trueOrDie(bindingIt == currentBindingPair->end(), "Too many arguments in binding expression.");
 
 				newEnv->mSymbolMap[var->GetIdentifier()] = env->eval(exp);
 			}

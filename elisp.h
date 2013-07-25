@@ -191,23 +191,22 @@ namespace elisp {
 			Cell operator *();
 		};
 
-		cons_cell(Cell inCar, shared_ptr<cons_cell> inCdr);
+		cons_cell(Cell inCar, Cell inCdr);
 		virtual ~cons_cell() {}
 		virtual operator string();
 
 		Cell GetCar();
 		void SetCar(Cell newCar);
 
-		shared_ptr<cons_cell> GetCdr();
-		void SetCdr(shared_ptr<cons_cell> newCdr);
-
+		Cell GetCdr();
+		void SetCdr(Cell newCdr);
 
 		iterator begin();
 		iterator end();
 
 	private:
-		Cell car; // TODO this shouldn't be public.
-		shared_ptr<cons_cell> cdr; // TODO this shouldn't be public and shouldn't be restricted to cons_cell's.
+		Cell car;
+		Cell cdr;
 	};
 	shared_ptr<cons_cell> empty_list = nullptr;
 
