@@ -195,7 +195,7 @@ namespace elisp {
 	 * indicate an empty list.
 	 */
 	inline bool cell_to_bool(Cell cell) {
-		return (cell != empty_list and (cell->type != kCellType_bool || static_cast<bool_cell*>(cell.get())->GetValue()));
+		return (cell != empty_list and (cell->GetType() != kCellType_bool || static_cast<bool_cell*>(cell.get())->GetValue()));
 	}
 
 	/**
@@ -263,17 +263,17 @@ namespace elisp {
 	Cell Environment::eval(Cell x) {
 		trueOrDie(x != nullptr, "Missing procedure.  Original code was most likely (), which is illegal.");
 		
-		if (x->type == kCellType_symbol) {
+		if (x->GetType() == kCellType_symbol) {
 			// Symbol lookup in the current environment.
 			const string& id = static_cast<symbol_cell*>(x.get())->GetIdentifier();
 			return find(id)->get(id);
-		} else if (x->type == kCellType_cons) {
+		} else if (x->GetType() == kCellType_cons) {
 			// Function call
 			cons_cell* listcell = static_cast<cons_cell*>(x.get());
 			Cell callable = this->eval(listcell->car);
 
 			// If the first argument is a symbol, look it up in the current environment.
-			if (callable->type == kCellType_symbol) {
+			if (callable->GetType() == kCellType_symbol) {
 				string callableName = static_cast<symbol_cell*>(callable.get())->GetIdentifier();
 
 				Env enclosingEnvironment = find(callableName);
@@ -282,10 +282,10 @@ namespace elisp {
 				callable = enclosingEnvironment->get(callableName);
 			}
 
-			if (callable->type == kCellType_procedure) { 
+			if (callable->GetType() == kCellType_procedure) { 
 				// Eval the procedure with the rest of the arguments.
 				return static_cast<proc_cell*>(callable.get())->evalProc(listcell->cdr, shared_from_this());
-			} else if (callable->type == kCellType_lambda) { 
+			} else if (callable->GetType() == kCellType_lambda) { 
 				// Eval the lambda with the rest of the arguments.
 				return static_cast<lambda_cell*>(callable.get())->eval(listcell->cdr, shared_from_this());
 			}
@@ -300,7 +300,7 @@ namespace elisp {
 
 	namespace procedures { // {{{
 		double GetNumericValue(Cell inOp) {
-			trueOrDie((inOp->type == kCellType_number), "Expected only number arguments");
+			trueOrDie((inOp->GetType() == kCellType_number), "Expected only number arguments");
 			return static_cast<number_cell*>(inOp.get())->GetValue();
 		}
 
@@ -333,7 +333,7 @@ namespace elisp {
 			auto oneArg = makeList({oneVal});
 			
 			result = add(oneArg, testEnv);
-			REQUIRE(result->type == kCellType_number);
+			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = static_cast<number_cell*>(result.get());
 			REQUIRE(number->value == 1);
@@ -342,7 +342,7 @@ namespace elisp {
 			auto twoArgs = makeList({oneVal, oneVal});
 			
 			result = add(twoArgs, testEnv);
-			REQUIRE(result->type == kCellType_number);
+			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = static_cast<number_cell*>(result.get());
 			REQUIRE(number->value == 2);
@@ -358,7 +358,7 @@ namespace elisp {
 				oneVal});
 			
 			result = add(sevenArgs, testEnv);
-			REQUIRE(result->type == kCellType_number);
+			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = static_cast<number_cell*>(result.get());
 			REQUIRE(number->value == 7);
@@ -373,7 +373,7 @@ namespace elisp {
 				});
 			
 			result = add(nested, testEnv);
-			REQUIRE(result->type == kCellType_number);
+			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = static_cast<number_cell*>(result.get());
 			REQUIRE(number->value == 3);
@@ -407,14 +407,14 @@ namespace elisp {
 			
 			// One argument
 			auto result = sub(makeList({oneVal}), testEnv);
-			REQUIRE(result->type == kCellType_number);
+			REQUIRE(result->GetType() == kCellType_number);
 			
 			auto number = std::static_pointer_cast<number_cell>(result);
 			REQUIRE(number->value == -1);
 			
 			// Two arguments
 			result = sub(makeList({oneVal, oneVal}), testEnv);
-			REQUIRE(result->type == kCellType_number);
+			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = std::static_pointer_cast<number_cell>(result);
 			REQUIRE(number->value == 0);
@@ -428,7 +428,7 @@ namespace elisp {
 				oneVal,
 				oneVal,
 				oneVal}), testEnv);
-			REQUIRE(result->type == kCellType_number);
+			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = std::static_pointer_cast<number_cell>(result);
 			REQUIRE(number->value == 4);
@@ -443,7 +443,7 @@ namespace elisp {
 				oneVal});
 			
 			result = sub(nested, testEnv);
-			REQUIRE(result->type == kCellType_number);
+			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = std::static_pointer_cast<number_cell>(result);
 			REQUIRE(number->value == 3);
@@ -472,7 +472,7 @@ namespace elisp {
 			auto result = mult(makeList({
 				std::make_shared<number_cell>(1.0),
 				std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->type == kCellType_number);
+			REQUIRE(result->GetType() == kCellType_number);
 			
 			auto number = std::static_pointer_cast<number_cell>(result);
 			REQUIRE(number->value == 2);
@@ -486,7 +486,7 @@ namespace elisp {
 				std::make_shared<number_cell>(0.5),
 				std::make_shared<number_cell>(10.0),
 				std::make_shared<number_cell>(-5.0)}), testEnv);
-			REQUIRE(result->type == kCellType_number);
+			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = std::static_pointer_cast<number_cell>(result);
 			REQUIRE(number->value == 500);
@@ -499,7 +499,7 @@ namespace elisp {
 					std::make_shared<number_cell>(2.0),
 					std::make_shared<number_cell>(3.0)}),
 				std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->type == kCellType_number);
+			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = std::static_pointer_cast<number_cell>(result);
 			REQUIRE(number->value == 24);
@@ -531,7 +531,7 @@ namespace elisp {
 			
 			// One arguments
 			auto result = div(makeList({std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->type == kCellType_number);
+			REQUIRE(result->GetType() == kCellType_number);
 			
 			auto number = std::static_pointer_cast<number_cell>(result);
 			REQUIRE(number->value == 0.5);
@@ -540,7 +540,7 @@ namespace elisp {
 			result = div(makeList({
 				std::make_shared<number_cell>(4.0),
 				std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->type == kCellType_number);
+			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = std::static_pointer_cast<number_cell>(result);
 			REQUIRE(number->value == 2);
@@ -550,7 +550,7 @@ namespace elisp {
 				std::make_shared<number_cell>(10.0),
 				std::make_shared<number_cell>(2.0),
 				std::make_shared<number_cell>(2.5)}), testEnv);
-			REQUIRE(result->type == kCellType_number);
+			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = std::static_pointer_cast<number_cell>(result);
 			REQUIRE(number->value == 2);
@@ -563,7 +563,7 @@ namespace elisp {
 					std::make_shared<number_cell>(2.0),
 					std::make_shared<number_cell>(1.0)}),
 				std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->type == kCellType_number);
+			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = std::static_pointer_cast<number_cell>(result);
 			REQUIRE(number->value == 1);
@@ -597,7 +597,7 @@ namespace elisp {
 			auto result = eq(makeList({
 				std::make_shared<number_cell>(2.0),
 				std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->type == kCellType_bool);
+			REQUIRE(result->GetType() == kCellType_bool);
 			REQUIRE(cell_to_bool(result));
 			
 			// Seven arguments
@@ -605,7 +605,7 @@ namespace elisp {
 				std::make_shared<number_cell>(-0.0),
 				std::make_shared<number_cell>(0.0),
 				std::make_shared<number_cell>(0.0)}), testEnv);
-			REQUIRE(result->type == kCellType_bool);
+			REQUIRE(result->GetType() == kCellType_bool);
 			REQUIRE(cell_to_bool(result));
 			
 			// Nested
@@ -615,7 +615,7 @@ namespace elisp {
 					std::make_shared<symbol_cell>("*"),
 					std::make_shared<number_cell>(2.0),
 					std::make_shared<number_cell>(2.0)})}), testEnv);
-			REQUIRE(result->type == kCellType_bool);
+			REQUIRE(result->GetType() == kCellType_bool);
 			REQUIRE(cell_to_bool(result));
 		}
 #endif // }}}
@@ -654,7 +654,7 @@ namespace elisp {
 						std::make_shared<number_cell>(1.0)}),
 					std::make_shared<number_cell>(1.0),
 					std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->type == kCellType_number);
+			REQUIRE(result->GetType() == kCellType_number);
 			auto number = std::static_pointer_cast<number_cell>(result);
 			REQUIRE(number->value == 1.0);
 
@@ -666,7 +666,7 @@ namespace elisp {
 						std::make_shared<number_cell>(1.0)}),
 					std::make_shared<number_cell>(1.0),
 					std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->type == kCellType_number);
+			REQUIRE(result->GetType() == kCellType_number);
 			number = std::static_pointer_cast<number_cell>(result);
 			REQUIRE(number->value == 2.0);
 
@@ -675,7 +675,7 @@ namespace elisp {
 					std::make_shared<bool_cell>(false),
 					std::make_shared<number_cell>(1.0),
 					std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->type == kCellType_number);
+			REQUIRE(result->GetType() == kCellType_number);
 			number = std::static_pointer_cast<number_cell>(result);
 			REQUIRE(number->value == 2.0);
 
@@ -684,7 +684,7 @@ namespace elisp {
 				std::make_shared<bool_cell>(empty_list),
 				std::make_shared<number_cell>(1.0),
 				std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->type == kCellType_number);
+			REQUIRE(result->GetType() == kCellType_number);
 			number = std::static_pointer_cast<number_cell>(result);
 			REQUIRE(number->value == 2.0);
 		}
@@ -706,9 +706,9 @@ namespace elisp {
 				std::make_shared<symbol_cell>("="),
 				std::make_shared<number_cell>(1.0),
 				std::make_shared<number_cell>(1.0)})}), testEnv);
-			REQUIRE(result->type == kCellType_cons);
+			REQUIRE(result->GetType() == kCellType_cons);
 			auto cons = std::static_pointer_cast<cons_cell>(result);
-			REQUIRE(cons->car->type == kCellType_symbol);
+			REQUIRE(cons->car->GetType() == kCellType_symbol);
 			auto equalSymbol = std::static_pointer_cast<symbol_cell>(cons->car);
 			REQUIRE(equalSymbol->GetIdentifier() == "=");
 		}
@@ -721,7 +721,7 @@ namespace elisp {
 			auto var = args->car;
 			auto exp = args->cdr->car;
 
-			trueOrDie(var->type == kCellType_symbol, "set! requires a symbol as its first argument");
+			trueOrDie(var->GetType() == kCellType_symbol, "set! requires a symbol as its first argument");
 			const auto& id = std::static_pointer_cast<symbol_cell>(var)->GetIdentifier();
 			auto e = env->find(id);
 			trueOrDie(e, "Cannot set undefined variable " + id);
@@ -741,7 +741,7 @@ namespace elisp {
 					std::make_shared<number_cell>(2.0)}), testEnv);
 			REQUIRE(testEnv->find("derp") == testEnv);
 			auto derpCell = testEnv->get("derp");
-			REQUIRE(derpCell->type == kCellType_number);
+			REQUIRE(derpCell->GetType() == kCellType_number);
 			auto num = std::static_pointer_cast<number_cell>(derpCell);
 			REQUIRE(num->value == 2);
 		}
@@ -755,12 +755,12 @@ namespace elisp {
 			auto firstArgument = args->car;
 			trueOrDie(firstArgument != empty_list, "No name specified for given function definition.");
 
-			if (firstArgument->type == kCellType_cons) {
+			if (firstArgument->GetType() == kCellType_cons) {
 				// Defining a function.
 
 				// Get the name of the function we're defining.
 				auto currentParameter = std::static_pointer_cast<cons_cell>(firstArgument);
-				trueOrDie(currentParameter->car->type == kCellType_symbol, "Function name in define declaration must be a symbol.");
+				trueOrDie(currentParameter->car->GetType() == kCellType_symbol, "Function name in define declaration must be a symbol.");
 				auto functionName = std::static_pointer_cast<symbol_cell>(currentParameter->car)->GetIdentifier();
 
 				// The elements of the lamgbda
@@ -772,7 +772,7 @@ namespace elisp {
 				currentParameter = currentParameter->cdr;
 				bool varargs = false;
 				while (currentParameter) {
-					trueOrDie(currentParameter->car->type == kCellType_symbol,
+					trueOrDie(currentParameter->car->GetType() == kCellType_symbol,
 							"Only symbols can be in the parameter list for a function definition.");
 					auto parameter = std::static_pointer_cast<symbol_cell>(currentParameter->car);
 					if (varargs) {
@@ -798,7 +798,7 @@ namespace elisp {
 				// Construct a lambda and bind it to the function name.
 				env->mSymbolMap[functionName] =
 					std::make_shared<lambda_cell>(env, std::move(parameters), std::move(bodyExpressions), std::move(varargsName));
-			} else if (firstArgument->type == kCellType_symbol) {
+			} else if (firstArgument->GetType() == kCellType_symbol) {
 				// Defining a variable binding.
 				auto varName = std::static_pointer_cast<symbol_cell>(firstArgument)->GetIdentifier();
 				auto exp = args->cdr->car;
@@ -822,7 +822,7 @@ namespace elisp {
 						std::make_shared<number_cell>(2.0)}), testEnv);
 			REQUIRE(testEnv->find("derp") == testEnv);
 			auto derpCell = testEnv->get("derp");
-			REQUIRE(derpCell->type == kCellType_number);
+			REQUIRE(derpCell->GetType() == kCellType_number);
 			auto num = std::static_pointer_cast<number_cell>(derpCell);
 			REQUIRE(num->value == 2);
 		}
@@ -838,14 +838,14 @@ namespace elisp {
 			shared_ptr<symbol_cell> varargsName; 
 			
 			// Get the paramter list 
-			if (currentCell->car->type == kCellType_cons) {
+			if (currentCell->car->GetType() == kCellType_cons) {
 				auto parameters = std::static_pointer_cast<cons_cell>(currentCell->car);
 				
 				// Add the parameters.
 				auto currentParameter = parameters;
 				bool varargs = false;
 				while (currentParameter) {
-					trueOrDie(currentParameter->car->type == kCellType_symbol, "Expected only symbols in lambda parameter list.");
+					trueOrDie(currentParameter->car->GetType() == kCellType_symbol, "Expected only symbols in lambda parameter list.");
 					auto symbolCell = std::static_pointer_cast<symbol_cell>(currentParameter->car);
 					if (varargs) {
 						varargsName = symbolCell;
@@ -858,7 +858,7 @@ namespace elisp {
 					}
 					currentParameter = currentParameter->cdr;
 				}
-			} else if (currentCell->car->type == kCellType_symbol) {
+			} else if (currentCell->car->GetType() == kCellType_symbol) {
 				varargsName = std::static_pointer_cast<symbol_cell>(currentCell->car);
 			} else {
 				die("Second argument to a lambda expression must be either a symbol or a list of symbols.");
@@ -895,17 +895,17 @@ namespace elisp {
 			verifyCell(args, "let");
 
 			auto currentCell = args;
-			trueOrDie(currentCell->car->type == kCellType_cons, "The first argument to \"let\" must be a list of lists.");
+			trueOrDie(currentCell->car->GetType() == kCellType_cons, "The first argument to \"let\" must be a list of lists.");
 			auto bindings = std::static_pointer_cast<cons_cell>(currentCell->car);
 
 			Env newEnv = std::make_shared<Environment>(env);
 
 			auto currentBinding = bindings;
 			while (currentBinding) {
-				trueOrDie(currentBinding->car->type == kCellType_cons, "The first argument to \"let\" must be a list of lists.");
+				trueOrDie(currentBinding->car->GetType() == kCellType_cons, "The first argument to \"let\" must be a list of lists.");
 				auto currentBindingPair = std::static_pointer_cast<cons_cell>(currentBinding->car);
 
-				trueOrDie(currentBindingPair->car->type == kCellType_symbol, "First argument in a binding expression must be a symbol");
+				trueOrDie(currentBindingPair->car->GetType() == kCellType_symbol, "First argument in a binding expression must be a symbol");
 
 				auto var = std::static_pointer_cast<symbol_cell>(currentBindingPair->car);
 				Cell exp = currentBindingPair->cdr->car;
@@ -941,14 +941,14 @@ namespace elisp {
 			Cell leftCell = env->eval(currentArgument->car);
 			Cell rightCell;
 
-			trueOrDie(leftCell->type == kCellType_number, "Function > accepts only numerical arguments");
+			trueOrDie(leftCell->GetType() == kCellType_number, "Function > accepts only numerical arguments");
 
 			currentArgument = currentArgument->cdr;
 
 			bool result = true;
 			while(currentArgument) {
 				rightCell = env->eval(currentArgument->car);
-				trueOrDie(rightCell->type == kCellType_number, "Function > accepts only numerical arguments");
+				trueOrDie(rightCell->GetType() == kCellType_number, "Function > accepts only numerical arguments");
 
 				double leftVal = GetNumericValue(leftCell);
 				double rightVal = GetNumericValue(rightCell);
@@ -973,7 +973,7 @@ namespace elisp {
 			Cell leftCell = env->eval(currentArgument->car);
 			Cell rightCell;
 
-			trueOrDie(leftCell->type == kCellType_number, "Function < accepts only numerical arguments");
+			trueOrDie(leftCell->GetType() == kCellType_number, "Function < accepts only numerical arguments");
 
 			currentArgument = currentArgument->cdr;
 
@@ -982,7 +982,7 @@ namespace elisp {
 				double leftVal = GetNumericValue(leftCell);
 
 				rightCell = env->eval(currentArgument->car);
-				trueOrDie(rightCell->type == kCellType_number, "Function < accepts only numerical arguments");
+				trueOrDie(rightCell->GetType() == kCellType_number, "Function < accepts only numerical arguments");
 				double rightVal = GetNumericValue(rightCell);
 
 				result = result && (leftVal < rightVal);

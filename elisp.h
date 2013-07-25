@@ -113,10 +113,11 @@ namespace elisp {
 		
 		/// Used by the writer to print the string representation of code.
 		virtual operator string() = 0;
+
+		eCellType GetType() { return type; }
 	protected:
 		cell_t(eCellType inType);
-	public:
-		eCellType type; // TODO this shouldn't be public.
+		eCellType type;
 	};
 
 	class bool_cell : public cell_t {
@@ -130,7 +131,7 @@ namespace elisp {
 
 		bool GetValue() { return value; }
 	private:
-		bool value; // TODO this shouldn't be public.
+		bool value;
 	};
 
 	class number_cell : public cell_t {
