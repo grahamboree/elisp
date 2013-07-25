@@ -102,8 +102,8 @@ namespace elisp {
 		// Match the arguments to the parameters.
 		for (auto paramID : mParameters) {
 			trueOrDie(args != empty_list, "insufficient arguments provided to function");
-			newEnv->mSymbolMap[paramID->GetIdentifier()] = currentEnv->eval(args->car);
-			args = args->cdr;
+			newEnv->mSymbolMap[paramID->GetIdentifier()] = currentEnv->eval(args->GetCar());
+			args = args->GetCdr();
 		}
 
 		// Either store the rest of the arguments in the variadic name,
@@ -111,8 +111,8 @@ namespace elisp {
 		if (mVarargsName) {
 			vector<Cell> varargs;
 			while (args) {
-				varargs.push_back(currentEnv->eval(args->car));
-				args = args->cdr;
+				varargs.push_back(currentEnv->eval(args->GetCar()));
+				args = args->GetCdr();
 			}
 			newEnv->mSymbolMap[mVarargsName->GetIdentifier()] = makeList(varargs);
 		} else if (args) {
@@ -295,7 +295,7 @@ namespace elisp {
 		} else if (x->GetType() == kCellType_cons) {
 			// Function call
 			cons_cell* listcell = static_cast<cons_cell*>(x.get());
-			Cell callable = this->eval(listcell->car);
+			Cell callable = this->eval(listcell->GetCar());
 
 			// If the first argument is a symbol, look it up in the current environment.
 			if (callable->GetType() == kCellType_symbol) {
@@ -309,10 +309,10 @@ namespace elisp {
 
 			if (callable->GetType() == kCellType_procedure) { 
 				// Eval the procedure with the rest of the arguments.
-				return static_cast<proc_cell*>(callable.get())->evalProc(listcell->cdr, shared_from_this());
+				return static_cast<proc_cell*>(callable.get())->evalProc(listcell->GetCdr(), shared_from_this());
 			} else if (callable->GetType() == kCellType_lambda) { 
 				// Eval the lambda with the rest of the arguments.
-				return static_cast<lambda_cell*>(callable.get())->eval(listcell->cdr, shared_from_this());
+				return static_cast<lambda_cell*>(callable.get())->eval(listcell->GetCdr(), shared_from_this());
 			}
 			die("Expected procedure or lambda as first element in an sexpression.");
 		}
@@ -338,9 +338,10 @@ namespace elisp {
 			
 			shared_ptr<cons_cell> currentCell = args;
 			double result = 0.0;
-			while(currentCell) {
-				result += GetNumericValue(env->eval(currentCell->car));
-				currentCell = currentCell->cdr;
+			
+			for (auto arg : *args) {
+			//for (auto it = args->begin(); it != args->end(); ++it) {
+				result += GetNumericValue(env->eval(arg));
 			}
 			
 			return std::make_shared<number_cell>(result);
@@ -405,6 +406,7 @@ namespace elisp {
 		}
 #endif // }}}
 
+#if 0
 		Cell sub(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "-");
 
@@ -1025,6 +1027,7 @@ namespace elisp {
 		Cell exit(shared_ptr<cons_cell>, Env) {
 			::exit(0);
 		}
+#endif
 	} // }}}
 	
 	/**
@@ -1034,7 +1037,7 @@ namespace elisp {
 		using namespace procedures;
 		env->mSymbolMap.insert({
 			{"+", 		std::make_shared<proc_cell>(add)},
-			{"-", 		std::make_shared<proc_cell>(sub)},
+			/*{"-", 		std::make_shared<proc_cell>(sub)},
 			{"*", 		std::make_shared<proc_cell>(mult)},
 			{"/", 		std::make_shared<proc_cell>(div)},
 			{"=", 		std::make_shared<proc_cell>(eq)},
@@ -1048,7 +1051,7 @@ namespace elisp {
 			{"display", std::make_shared<proc_cell>(display)},
 			{"<", 		std::make_shared<proc_cell>(less)},
 			{">", 		std::make_shared<proc_cell>(greater)},
-			{"exit", 	std::make_shared<proc_cell>(exit)},
+			{"exit", 	std::make_shared<proc_cell>(exit)},*/
 		});
 	}
 	// }}}

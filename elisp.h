@@ -205,7 +205,7 @@ namespace elisp {
 		iterator begin();
 		iterator end();
 
-	//private:
+	private:
 		Cell car; // TODO this shouldn't be public.
 		shared_ptr<cons_cell> cdr; // TODO this shouldn't be public and shouldn't be restricted to cons_cell's.
 	};
