@@ -301,7 +301,7 @@ namespace elisp {
 	namespace procedures { // {{{
 		double GetNumericValue(Cell inOp) {
 			trueOrDie((inOp->type == kCellType_number), "Expected only number arguments");
-			return static_cast<number_cell*>(inOp.get())->value;
+			return static_cast<number_cell*>(inOp.get())->GetValue();
 		}
 
 		void verifyCell(shared_ptr<cons_cell> inCell, string methodName) {
@@ -1071,7 +1071,7 @@ namespace elisp {
 			double value = 0.0;
 			iss >> value;
 			auto n = std::make_shared<number_cell>(value);
-			n->valueString = token;
+			n->SetValueString(token);
 			return std::static_pointer_cast<cell_t>(n);
 		}
 

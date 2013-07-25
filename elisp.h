@@ -136,9 +136,12 @@ namespace elisp {
 		number_cell(double inValue);
 		virtual ~number_cell() {}
 		virtual operator string(); 
-	//private:
-		double value; // TODO this shouldn't be public.
-		string valueString; // TODO this shouldn't be public.
+
+		double GetValue() { return value; }
+		void SetValueString(string valuestr) { valueString = valuestr; }
+	private:
+		double value;
+		string valueString;
 	};
 
 	class char_cell : public cell_t { 
@@ -147,7 +150,7 @@ namespace elisp {
 		virtual ~char_cell() {}
 		virtual operator string();
 	private:
-		char value; // TODO this shouldn't be public.
+		char value;
 	};
 
 	class string_cell : public cell_t {
