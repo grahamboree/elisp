@@ -738,13 +738,12 @@ namespace elisp {
 		}
 #endif // }}}
 
-#if 0
 		Cell set(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "set!");
-			verifyCell(args->cdr, "set!");
+			verifyCell(args->GetCdr(), "set!");
 
-			auto var = args->car;
-			auto exp = args->cdr->car;
+			auto var = args->GetCar();
+			auto exp = args->GetCdr()->GetCar();
 
 			trueOrDie(var->GetType() == kCellType_symbol, "set! requires a symbol as its first argument");
 			const auto& id = std::static_pointer_cast<symbol_cell>(var)->GetIdentifier();
@@ -772,6 +771,7 @@ namespace elisp {
 		}
 #endif // }}}
 
+#if 0
 		Cell define(shared_ptr<cons_cell> args, Env env) {
 			// Make sure we got enough arguments.
 			verifyCell(args, "define");
@@ -1040,8 +1040,8 @@ namespace elisp {
 			{"/", 		std::make_shared<proc_cell>(div)},
 			{"=", 		std::make_shared<proc_cell>(eq)},
 			{"if", 		std::make_shared<proc_cell>(if_then_else)},
-			/*
 			{"quote", 	std::make_shared<proc_cell>(quote)},
+			/*
 			{"set!",	std::make_shared<proc_cell>(set)},
 			{"define", 	std::make_shared<proc_cell>(define)},
 			{"lambda", 	std::make_shared<proc_cell>(lambda)},
