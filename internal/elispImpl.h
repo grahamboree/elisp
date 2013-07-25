@@ -336,13 +336,9 @@ namespace elisp {
 		Cell add(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "+");
 			
-			shared_ptr<cons_cell> currentCell = args;
 			double result = 0.0;
-			
-			for (auto arg : *args) {
-			//for (auto it = args->begin(); it != args->end(); ++it) {
+			for (auto arg : *args)
 				result += GetNumericValue(env->eval(arg));
-			}
 			
 			return std::make_shared<number_cell>(result);
 		};
@@ -406,22 +402,20 @@ namespace elisp {
 		}
 #endif // }}}
 
-#if 0
 		Cell sub(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "-");
 
 			shared_ptr<cons_cell> currentCell = args;
+			auto it = args->begin();
 
-			double result = GetNumericValue(env->eval(currentCell->car));
-			currentCell = currentCell->cdr;
+			double result = GetNumericValue(env->eval(*it));
+			++it;
 
-			if (!currentCell)
+			if (it == args->end())
 				return std::make_shared<number_cell>(-result);
 
-			while(currentCell) {
-				result -= GetNumericValue(env->eval(currentCell->car));
-				currentCell = currentCell->cdr;
-			}
+			for (;it != args->end(); ++it)
+				result -= GetNumericValue(env->eval(*it));
 
 			return std::make_shared<number_cell>(result); 
 		}
@@ -477,6 +471,7 @@ namespace elisp {
 		}
 #endif // }}}
 
+#if 0
 		Cell mult(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "*");
 
@@ -1037,7 +1032,8 @@ namespace elisp {
 		using namespace procedures;
 		env->mSymbolMap.insert({
 			{"+", 		std::make_shared<proc_cell>(add)},
-			/*{"-", 		std::make_shared<proc_cell>(sub)},
+			{"-", 		std::make_shared<proc_cell>(sub)},
+			/*
 			{"*", 		std::make_shared<proc_cell>(mult)},
 			{"/", 		std::make_shared<proc_cell>(div)},
 			{"=", 		std::make_shared<proc_cell>(eq)},
