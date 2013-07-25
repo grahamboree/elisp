@@ -18,7 +18,7 @@ namespace elisp {
 	}
 
 	inline std::ostream& operator << (std::ostream& os, Cell obj) {
-		return (os << static_cast<string>(*obj));
+		return (os << (obj ? static_cast<string>(*obj) : "'()"));
 	}
 
 	inline number_cell::operator string() {
@@ -47,14 +47,22 @@ namespace elisp {
 
 	cons_cell::operator string() {
 		std::ostringstream ss;
+		auto consCell = shared_from_this();
 		ss << "(";
-
-		iterator it = begin();
-		while (it != end()) {
-			ss << *it;
-			++it;
-			if (it != end())
+		bool addSpace = false;
+		while (true) {
+			if (addSpace)
 				ss << " ";
+			addSpace = true;
+			ss << consCell->car;
+			if (!consCell->cdr) {
+				break;
+			} else if (consCell->cdr->GetType() == kCellType_cons) {
+				consCell = std::static_pointer_cast<cons_cell>(consCell->cdr);
+			} else {
+				ss << " . " << consCell->cdr;
+				break;
+			}
 		}
 		ss << ")";
 		return ss.str();
@@ -63,7 +71,7 @@ namespace elisp {
 	inline cons_cell::iterator::iterator(shared_ptr<cons_cell> startCell) : currentCell(startCell) {}
 
 	inline cons_cell::iterator& cons_cell::iterator::operator++() {
-		trueOrDie(!currentCell->cdr or currentCell->cdr->GetType() == kCellType_cons,
+		trueOrDie(currentCell->cdr == empty_list or currentCell->cdr->GetType() == kCellType_cons,
 				"Attempting to iterate through a cons-list that does not contain a cons cell in the cdr position.");
 		currentCell = std::static_pointer_cast<cons_cell>(currentCell->cdr);
 		return (*this);
@@ -71,7 +79,7 @@ namespace elisp {
 
 	inline cons_cell::iterator cons_cell::iterator::operator++(int) {
 		iterator temp = *this;
-		trueOrDie(!currentCell->cdr or currentCell->cdr->GetType() == kCellType_cons,
+		trueOrDie(currentCell->cdr == empty_list or currentCell->cdr->GetType() == kCellType_cons,
 				"Attempting to iterate through a cons-list that does not contain a cons cell in the cdr position.");
 		currentCell = std::static_pointer_cast<cons_cell>(currentCell->cdr);
 		return temp;
@@ -1042,6 +1050,46 @@ namespace elisp {
 		Cell exit(shared_ptr<cons_cell>, Env) {
 			::exit(0);
 		}
+
+		Cell cons(shared_ptr<cons_cell> args, Env env) {
+			auto it = args->begin();
+			trueOrDie(it != args->end(), "Cons expects exactly 2 arguments");
+			Cell car = env->eval(*it);
+
+			++it;
+			trueOrDie(it != args->end(), "Cons expects exactly 2 arguments");
+			Cell cdr = env->eval(*it);
+
+			/*++it;
+			trueOrDie(it == args->end(), "Cons expects exactly 2 arguments");*/
+
+			return std::make_shared<cons_cell>(car, cdr);
+		}
+
+#ifdef ELISP_TEST // {{{
+		TEST_CASE("prelude/cons", "cons") {
+			Env testEnv = std::make_shared<Environment>();
+			add_globals(testEnv);
+			testEnv->mSymbolMap["derp"] = std::make_shared<number_cell>(1.0);
+
+			Cell result = cons(makeList({std::make_shared<number_cell>(1.0), std::make_shared<number_cell>(2.0)}), testEnv);
+
+			REQUIRE(result);
+			REQUIRE(result->GetType() == kCellType_cons);
+			
+			auto consCell = std::static_pointer_cast<cons_cell>(result);
+
+			REQUIRE(consCell->GetCar());
+			REQUIRE(consCell->GetCar()->GetType() == kCellType_number);
+			auto num = std::static_pointer_cast<number_cell>(consCell->GetCar());
+			REQUIRE(num->GetValue() == 1.0);
+
+			REQUIRE(consCell->GetCdr());
+			REQUIRE(consCell->GetCdr()->GetType() == kCellType_number);
+			num = std::static_pointer_cast<number_cell>(consCell->GetCdr());
+			REQUIRE(num->GetValue() == 2.0);
+		}
+#endif // }}}
 	} // }}}
 	
 	/**
@@ -1066,6 +1114,7 @@ namespace elisp {
 			{">", 		std::make_shared<proc_cell>(greater)},
 			{"<", 		std::make_shared<proc_cell>(less)},
 			{"exit", 	std::make_shared<proc_cell>(exit)},
+			{"cons", 	std::make_shared<proc_cell>(cons)},
 		});
 	}
 	// }}}

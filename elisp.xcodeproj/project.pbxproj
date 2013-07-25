@@ -33,25 +33,13 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		C9066BC6177CD37A00E667AC /* assert.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = assert.h; sourceTree = "<group>"; };
-		C9066BC7177CD37A00E667AC /* Cells.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Cells.h; sourceTree = "<group>"; };
-		C9066BC8177CD37A00E667AC /* data.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = data.h; sourceTree = "<group>"; };
-		C9066BC9177CD37A00E667AC /* Environment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Environment.h; sourceTree = "<group>"; };
-		C9066BCA177CD37A00E667AC /* prelude.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = prelude.h; sourceTree = "<group>"; };
-		C9066BCB177CD37A00E667AC /* reader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = reader.h; sourceTree = "<group>"; };
 		C9066BCC177CD37A00E667AC /* test.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = test.h; sourceTree = "<group>"; };
-		C9066BCD177CD37A00E667AC /* util.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = util.h; sourceTree = "<group>"; };
 		C987191C177B89530075F40D /* elisp */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = elisp; sourceTree = BUILT_PRODUCTS_DIR; };
 		C9871929177B89BF0075F40D /* catch.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = catch.hpp; sourceTree = SOURCE_ROOT; };
 		C987192C177B89BF0075F40D /* elisp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = elisp.h; sourceTree = SOURCE_ROOT; };
 		C987192E177B89BF0075F40D /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = SOURCE_ROOT; };
 		C987193B177B8A2F0075F40D /* elisp copy */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "elisp copy"; sourceTree = BUILT_PRODUCTS_DIR; };
-		C9AA28A21784D6FF0043A31F /* assert.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = assert.h; sourceTree = "<group>"; };
-		C9AA28A41784D6FF0043A31F /* data.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = data.h; sourceTree = "<group>"; };
 		C9AA28A51784D6FF0043A31F /* elispImpl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = elispImpl.h; sourceTree = "<group>"; };
-		C9AA28A61784D6FF0043A31F /* EnvDecl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EnvDecl.h; sourceTree = "<group>"; };
-		C9AA28A81784D6FF0043A31F /* prelude.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = prelude.h; sourceTree = "<group>"; };
-		C9AA28AA1784D6FF0043A31F /* test.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = test.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -75,24 +63,8 @@
 		C9066BC3177CD37A00E667AC /* internal */ = {
 			isa = PBXGroup;
 			children = (
-				C9AA28A21784D6FF0043A31F /* assert.h */,
-				C9066BC7177CD37A00E667AC /* Cells.h */,
-				C9AA28A41784D6FF0043A31F /* data.h */,
 				C9AA28A51784D6FF0043A31F /* elispImpl.h */,
-				C9AA28A61784D6FF0043A31F /* EnvDecl.h */,
-				C9066BC9177CD37A00E667AC /* Environment.h */,
-				C9AA28A81784D6FF0043A31F /* prelude.h */,
-				C9066BCB177CD37A00E667AC /* reader.h */,
-				C9AA28AA1784D6FF0043A31F /* test.h */,
-				C9066BC6177CD37A00E667AC /* assert.h */,
-				C9066BCD177CD37A00E667AC /* util.h */,
-				C9066BC7177CD37A00E667AC /* Cells.h */,
-				C9066BC8177CD37A00E667AC /* data.h */,
-				C9066BC9177CD37A00E667AC /* Environment.h */,
-				C9066BCA177CD37A00E667AC /* prelude.h */,
-				C9066BCB177CD37A00E667AC /* reader.h */,
 				C9066BCC177CD37A00E667AC /* test.h */,
-				C9066BCD177CD37A00E667AC /* util.h */,
 			);
 			path = internal;
 			sourceTree = SOURCE_ROOT;
