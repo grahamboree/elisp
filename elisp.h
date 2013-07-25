@@ -164,7 +164,9 @@ namespace elisp {
 		symbol_cell(string id) :cell_t(kCellType_symbol), identifier(id) {}
 		virtual ~symbol_cell() {}
 		virtual operator string() { return identifier; }
-	//private:
+
+		string GetIdentifier() { return identifier; }
+	private:
 		string identifier; // TODO this shouldn't be public.
 	};
 
@@ -173,6 +175,13 @@ namespace elisp {
 		cons_cell(Cell inCar, shared_ptr<cons_cell> inCdr);
 		virtual ~cons_cell() {}
 		virtual operator string();
+
+		Cell GetCar() { return car; }
+		void SetCar(Cell newCar) { car = newCar; }
+
+		shared_ptr<cons_cell> GetCdr() { return cdr; }
+		void SetCdr(shared_ptr<cons_cell> newCdr) { cdr = newCdr; }
+
 	//private:
 		Cell car; // TODO this shouldn't be public.
 		shared_ptr<cons_cell> cdr; // TODO this shouldn't be public and shouldn't be restricted to cons_cell's.
@@ -188,7 +197,7 @@ namespace elisp {
 		virtual ~proc_cell() {}
 		virtual operator string();
 		Cell evalProc(shared_ptr<cons_cell> args, Env env);
-	protected:
+	private:
 		std::function<Cell(shared_ptr<cons_cell>, Env)> mProcedure;
 	};
 

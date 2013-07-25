@@ -65,7 +65,7 @@ namespace elisp {
 		// Match the arguments to the parameters.
 		for (auto paramID : mParameters) {
 			trueOrDie(args != empty_list, "insufficient arguments provided to function");
-			newEnv->mSymbolMap[paramID->identifier] = currentEnv->eval(args->car);
+			newEnv->mSymbolMap[paramID->GetIdentifier()] = currentEnv->eval(args->car);
 			args = args->cdr;
 		}
 
@@ -77,7 +77,7 @@ namespace elisp {
 				varargs.push_back(currentEnv->eval(args->car));
 				args = args->cdr;
 			}
-			newEnv->mSymbolMap[mVarargsName->identifier] = makeList(varargs);
+			newEnv->mSymbolMap[mVarargsName->GetIdentifier()] = makeList(varargs);
 		} else if (args) {
 			die("too many arguments specified to lambda");
 		}
@@ -253,7 +253,7 @@ namespace elisp {
 		
 		if (x->type == kCellType_symbol) {
 			// Symbol lookup in the current environment.
-			string& id = static_cast<symbol_cell*>(x.get())->identifier;
+			const string& id = static_cast<symbol_cell*>(x.get())->GetIdentifier();
 			return find(id)->get(id);
 		} else if (x->type == kCellType_cons) {
 			// Function call
@@ -262,7 +262,7 @@ namespace elisp {
 
 			// If the first argument is a symbol, look it up in the current environment.
 			if (callable->type == kCellType_symbol) {
-				string callableName = static_cast<symbol_cell*>(callable.get())->identifier;
+				string callableName = static_cast<symbol_cell*>(callable.get())->GetIdentifier();
 
 				Env enclosingEnvironment = find(callableName);
 				trueOrDie(enclosingEnvironment, "Undefined function: " + callableName);
@@ -698,7 +698,7 @@ namespace elisp {
 			auto cons = std::static_pointer_cast<cons_cell>(result);
 			REQUIRE(cons->car->type == kCellType_symbol);
 			auto equalSymbol = std::static_pointer_cast<symbol_cell>(cons->car);
-			REQUIRE(equalSymbol->identifier == "=");
+			REQUIRE(equalSymbol->GetIdentifier() == "=");
 		}
 #endif // }}}
 
@@ -710,7 +710,7 @@ namespace elisp {
 			auto exp = args->cdr->car;
 
 			trueOrDie(var->type == kCellType_symbol, "set! requires a symbol as its first argument");
-			auto& id = std::static_pointer_cast<symbol_cell>(var)->identifier;
+			const auto& id = std::static_pointer_cast<symbol_cell>(var)->GetIdentifier();
 			auto e = env->find(id);
 			trueOrDie(e, "Cannot set undefined variable " + id);
 
@@ -749,7 +749,7 @@ namespace elisp {
 				// Get the name of the function we're defining.
 				auto currentParameter = std::static_pointer_cast<cons_cell>(firstArgument);
 				trueOrDie(currentParameter->car->type == kCellType_symbol, "Function name in define declaration must be a symbol.");
-				auto functionName = std::static_pointer_cast<symbol_cell>(currentParameter->car)->identifier;
+				auto functionName = std::static_pointer_cast<symbol_cell>(currentParameter->car)->GetIdentifier();
 
 				// Construct a lambda and bind it to the function name.
 				auto lambda = std::make_shared<lambda_cell>(env);
@@ -764,7 +764,7 @@ namespace elisp {
 					if (varargs) {
 						lambda->mVarargsName = parameter;
 						trueOrDie(currentParameter->cdr == empty_list, "Expected only one varargs identifier following '.' in parameter list of lambda definition");
-					} else if (parameter->identifier == ".") {
+					} else if (parameter->GetIdentifier() == ".") {
 						varargs = true;
 						trueOrDie(currentParameter->cdr != empty_list, "Expected varargs identifier following '.' in parameter list of lambda definition");
 					} else {
@@ -784,7 +784,7 @@ namespace elisp {
 				env->mSymbolMap[functionName] = lambda;
 			} else if (firstArgument->type == kCellType_symbol) {
 				// Defining a variable binding.
-				auto varName = std::static_pointer_cast<symbol_cell>(firstArgument)->identifier;
+				auto varName = std::static_pointer_cast<symbol_cell>(firstArgument)->GetIdentifier();
 				auto exp = args->cdr->car;
 
 				trueOrDie(args->cdr->cdr == empty_list, "define expects only 2 arguments when defining a variable binding.");
@@ -832,7 +832,7 @@ namespace elisp {
 					if (varargs) {
 						cell->mVarargsName = symbolCell;
 						trueOrDie(currentParameter->cdr == empty_list, "Only one identifier can follow a '.' in the parameter list of a lambda expression.");
-					} else if (symbolCell->identifier == ".") {
+					} else if (symbolCell->GetIdentifier() == ".") {
 						varargs = true;
 						trueOrDie(currentParameter->cdr != empty_list, "Expected varargs name following '.' in lambda expression.");
 					} else {
@@ -893,7 +893,7 @@ namespace elisp {
 
 				trueOrDie(!currentBindingPair->cdr->cdr, "Too many arguments in binding expression.");
 
-				newEnv->mSymbolMap[var->identifier] = env->eval(exp);
+				newEnv->mSymbolMap[var->GetIdentifier()] = env->eval(exp);
 
 				currentBinding = currentBinding->cdr;
 			}
