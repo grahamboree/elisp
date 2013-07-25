@@ -59,6 +59,18 @@ namespace elisp {
 	{
 	}
 
+	inline lambda_cell::lambda_cell(Env outerEnv,
+			vector<shared_ptr<symbol_cell>>&& inParameters,
+			vector<Cell>&& inBodyExpressions,
+			shared_ptr<symbol_cell>&& inVarargsName)
+	: cell_t(kCellType_lambda)
+	, env(outerEnv)
+	, mParameters(inParameters)
+	, mBodyExpressions(inBodyExpressions)
+	, mVarargsName(inVarargsName)
+	{
+	}
+
 	Cell lambda_cell::eval(shared_ptr<cons_cell> args, Env currentEnv) {
 		Env newEnv = std::make_shared<Environment>(env);
 
@@ -751,8 +763,10 @@ namespace elisp {
 				trueOrDie(currentParameter->car->type == kCellType_symbol, "Function name in define declaration must be a symbol.");
 				auto functionName = std::static_pointer_cast<symbol_cell>(currentParameter->car)->GetIdentifier();
 
-				// Construct a lambda and bind it to the function name.
-				auto lambda = std::make_shared<lambda_cell>(env);
+				// The elements of the lamgbda
+				vector<shared_ptr<symbol_cell>> parameters; 
+				vector<Cell> bodyExpressions; 
+				shared_ptr<symbol_cell> varargsName; 
 
 				// Get the parameter name list if there are any specified.
 				currentParameter = currentParameter->cdr;
@@ -762,13 +776,13 @@ namespace elisp {
 							"Only symbols can be in the parameter list for a function definition.");
 					auto parameter = std::static_pointer_cast<symbol_cell>(currentParameter->car);
 					if (varargs) {
-						lambda->mVarargsName = parameter;
+						varargsName = parameter;
 						trueOrDie(currentParameter->cdr == empty_list, "Expected only one varargs identifier following '.' in parameter list of lambda definition");
 					} else if (parameter->GetIdentifier() == ".") {
 						varargs = true;
 						trueOrDie(currentParameter->cdr != empty_list, "Expected varargs identifier following '.' in parameter list of lambda definition");
 					} else {
-						lambda->mParameters.push_back(parameter);
+						parameters.push_back(parameter);
 					}
 					currentParameter = currentParameter->cdr;
 				}
@@ -777,11 +791,13 @@ namespace elisp {
 				auto currentBodyExpr = args->cdr;
 				trueOrDie(currentBodyExpr, "At least one body expression is required when defining a function.");
 				while (currentBodyExpr) {
-					lambda->mBodyExpressions.push_back(currentBodyExpr->car);
+					bodyExpressions.push_back(currentBodyExpr->car);
 					currentBodyExpr = currentBodyExpr->cdr;
 				}
 
-				env->mSymbolMap[functionName] = lambda;
+				// Construct a lambda and bind it to the function name.
+				env->mSymbolMap[functionName] =
+					std::make_shared<lambda_cell>(env, std::move(parameters), std::move(bodyExpressions), std::move(varargsName));
 			} else if (firstArgument->type == kCellType_symbol) {
 				// Defining a variable binding.
 				auto varName = std::static_pointer_cast<symbol_cell>(firstArgument)->GetIdentifier();
@@ -816,9 +832,11 @@ namespace elisp {
 			trueOrDie(args != empty_list, "Procedure 'lambda' requires at least 2 arguments, 0 given");
 			auto currentCell = args;
 
-			// Create a lambda and return it.
-			auto cell = std::make_shared<lambda_cell>(env);
-
+			// The elements of the lamgbda
+			vector<shared_ptr<symbol_cell>> lambdaParameters; 
+			vector<Cell> bodyExpressions; 
+			shared_ptr<symbol_cell> varargsName; 
+			
 			// Get the paramter list 
 			if (currentCell->car->type == kCellType_cons) {
 				auto parameters = std::static_pointer_cast<cons_cell>(currentCell->car);
@@ -830,18 +848,18 @@ namespace elisp {
 					trueOrDie(currentParameter->car->type == kCellType_symbol, "Expected only symbols in lambda parameter list.");
 					auto symbolCell = std::static_pointer_cast<symbol_cell>(currentParameter->car);
 					if (varargs) {
-						cell->mVarargsName = symbolCell;
+						varargsName = symbolCell;
 						trueOrDie(currentParameter->cdr == empty_list, "Only one identifier can follow a '.' in the parameter list of a lambda expression.");
 					} else if (symbolCell->GetIdentifier() == ".") {
 						varargs = true;
 						trueOrDie(currentParameter->cdr != empty_list, "Expected varargs name following '.' in lambda expression.");
 					} else {
-						cell->mParameters.push_back(symbolCell);
+						lambdaParameters.push_back(symbolCell);
 					}
 					currentParameter = currentParameter->cdr;
 				}
 			} else if (currentCell->car->type == kCellType_symbol) {
-				cell->mVarargsName = std::static_pointer_cast<symbol_cell>(currentCell->car);
+				varargsName = std::static_pointer_cast<symbol_cell>(currentCell->car);
 			} else {
 				die("Second argument to a lambda expression must be either a symbol or a list of symbols.");
 			}
@@ -852,11 +870,12 @@ namespace elisp {
 
 			// Add the body expressions.
 			while (currentCell) {
-				cell->mBodyExpressions.push_back(currentCell->car);
+				bodyExpressions.push_back(currentCell->car);
 				currentCell = currentCell->cdr;
 			}
 
-			return cell;
+			// Create a lambda and return it.
+			return std::make_shared<lambda_cell>(env, std::move(lambdaParameters), std::move(bodyExpressions), std::move(varargsName));
 		}
 
 		Cell begin(shared_ptr<cons_cell> args, Env env) {

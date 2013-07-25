@@ -167,7 +167,7 @@ namespace elisp {
 
 		string GetIdentifier() { return identifier; }
 	private:
-		string identifier; // TODO this shouldn't be public.
+		string identifier;
 	};
 
 	class cons_cell : public cell_t, public std::enable_shared_from_this<cons_cell> {
@@ -207,16 +207,17 @@ namespace elisp {
 	class lambda_cell : public cell_t {
 	public:
 		lambda_cell(Env outerEnv);
+		lambda_cell(Env outerEnv, vector<shared_ptr<symbol_cell>>&& inParameters, vector<Cell>&& inBodyExpressions, shared_ptr<symbol_cell>&& inVarargsName);
 		virtual ~lambda_cell() {}
 
 		virtual Cell eval(shared_ptr<cons_cell> args, Env currentEnv);
 		virtual operator string();
 
-	//protected:
-		Env env; // TODO this shouldn't be public.
-		vector<shared_ptr<symbol_cell>> mParameters; // 0 or more arguments. TODO this shouldn't be public.
-		vector<Cell> 					mBodyExpressions; // 1 or more body statements. TODO this shouldn't be public. 
-		shared_ptr<symbol_cell> 		mVarargsName; // TODO this shouldn't be public. 
+	private:
+		Env env;
+		vector<shared_ptr<symbol_cell>> mParameters; // 0 or more arguments. 
+		vector<Cell> 					mBodyExpressions; // 1 or more body statements. 
+		shared_ptr<symbol_cell> 		mVarargsName; // name of the varargs parameter if there is one.
 	};
 }
 
