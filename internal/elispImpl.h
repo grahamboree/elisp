@@ -908,20 +908,17 @@ namespace elisp {
 			return std::make_shared<lambda_cell>(env, std::move(lambdaParameters), std::move(bodyExpressions), std::move(varargsName));
 		}
 
-#if 0
 		Cell begin(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "begin");
 
-			auto currentCell = args;
-			auto value = env->eval(currentCell->car);
-			currentCell = currentCell->cdr;
-			while (currentCell) {
-				value = env->eval(currentCell->car);
-				currentCell = currentCell->cdr;
-			}
+			Cell value = empty_list;
+			for (auto arg : *args) 
+				value = env->eval(arg);
+
 			return value;
 		}
 
+#if 0
 		Cell let(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "let");
 
@@ -1047,11 +1044,11 @@ namespace elisp {
 			{"=", 		std::make_shared<proc_cell>(eq)},
 			{"if", 		std::make_shared<proc_cell>(if_then_else)},
 			{"quote", 	std::make_shared<proc_cell>(quote)},
-			/*
 			{"set!",	std::make_shared<proc_cell>(set)},
 			{"define", 	std::make_shared<proc_cell>(define)},
 			{"lambda", 	std::make_shared<proc_cell>(lambda)},
 			{"begin", 	std::make_shared<proc_cell>(begin)},
+			/*
 			{"let",		std::make_shared<proc_cell>(let)},
 			{"display", std::make_shared<proc_cell>(display)},
 			{"<", 		std::make_shared<proc_cell>(less)},
