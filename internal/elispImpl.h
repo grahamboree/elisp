@@ -918,42 +918,39 @@ namespace elisp {
 			return value;
 		}
 
-#if 0
 		Cell let(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "let");
 
-			auto currentCell = args;
-			trueOrDie(currentCell->car->GetType() == kCellType_cons, "The first argument to \"let\" must be a list of lists.");
-			auto bindings = std::static_pointer_cast<cons_cell>(currentCell->car);
+			auto it = args->begin();
+			trueOrDie((*it)->GetType() == kCellType_cons, "The first argument to \"let\" must be a list of lists.");
+			auto bindings = std::static_pointer_cast<cons_cell>(*it);
 
 			Env newEnv = std::make_shared<Environment>(env);
 
-			auto currentBinding = bindings;
-			while (currentBinding) {
-				trueOrDie(currentBinding->car->GetType() == kCellType_cons, "The first argument to \"let\" must be a list of lists.");
-				auto currentBindingPair = std::static_pointer_cast<cons_cell>(currentBinding->car);
+			for (auto binding : *bindings) {
+				trueOrDie(binding->GetType() == kCellType_cons, "The first argument to \"let\" must be a list of lists.");
+				auto currentBindingPair = std::static_pointer_cast<cons_cell>(binding);
 
-				trueOrDie(currentBindingPair->car->GetType() == kCellType_symbol, "First argument in a binding expression must be a symbol");
+				trueOrDie(currentBindingPair->GetCar()->GetType() == kCellType_symbol, "First argument in a binding expression must be a symbol");
 
-				auto var = std::static_pointer_cast<symbol_cell>(currentBindingPair->car);
-				Cell exp = currentBindingPair->cdr->car;
+				auto var = std::static_pointer_cast<symbol_cell>(currentBindingPair->GetCar());
+				Cell exp = currentBindingPair->GetCdr()->GetCar();
 
-				trueOrDie(!currentBindingPair->cdr->cdr, "Too many arguments in binding expression.");
+				trueOrDie(!currentBindingPair->GetCdr()->GetCdr(), "Too many arguments in binding expression.");
 
 				newEnv->mSymbolMap[var->GetIdentifier()] = env->eval(exp);
-
-				currentBinding = currentBinding->cdr;
 			}
-			currentCell = currentCell->cdr;
+
+			++it;
 
 			Cell returnVal = empty_list;
-			while (currentCell) {
-				returnVal = newEnv->eval(currentCell->car);
-				currentCell = currentCell->cdr;
-			}
+			for (; it != args->end(); ++it)
+				returnVal = newEnv->eval(*it);
+
 			return returnVal;
 		}
 
+#if 0
 		Cell display(shared_ptr<cons_cell> args, Env env) {
 			auto currentArgument = args;
 			for (; currentArgument; currentArgument = currentArgument->cdr) 
@@ -1048,8 +1045,8 @@ namespace elisp {
 			{"define", 	std::make_shared<proc_cell>(define)},
 			{"lambda", 	std::make_shared<proc_cell>(lambda)},
 			{"begin", 	std::make_shared<proc_cell>(begin)},
-			/*
 			{"let",		std::make_shared<proc_cell>(let)},
+			/*
 			{"display", std::make_shared<proc_cell>(display)},
 			{"<", 		std::make_shared<proc_cell>(less)},
 			{">", 		std::make_shared<proc_cell>(greater)},
