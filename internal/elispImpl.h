@@ -586,22 +586,19 @@ namespace elisp {
 		}
 #endif // }}}
 
-#if 0
 		Cell eq(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "=");
 
-			auto currentCell = args;
+			auto it = args->begin();
 
-			double value = GetNumericValue(env->eval(currentCell->car));
-			currentCell = currentCell->cdr;
-			verifyCell(currentCell, "=");
+			double value = GetNumericValue(env->eval(*it));
+			++it;
+			verifyCell(args->GetCdr(), "=");
 
 			// No early out to ensure all args are numbers.
 			bool result = true;
-			while (currentCell) {
-				result = result && (value == GetNumericValue(env->eval(currentCell->car)));
-				currentCell = currentCell->cdr;
-			}
+			for (; it != args->end(); ++it)
+				result = result && (value == GetNumericValue(env->eval(*it)));
 			return std::make_shared<bool_cell>(result);
 		}
 
@@ -637,6 +634,7 @@ namespace elisp {
 		}
 #endif // }}}
 
+#if 0
 		Cell if_then_else(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "if");
 
