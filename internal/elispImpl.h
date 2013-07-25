@@ -771,22 +771,23 @@ namespace elisp {
 		}
 #endif // }}}
 
-#if 0
 		Cell define(shared_ptr<cons_cell> args, Env env) {
 			// Make sure we got enough arguments.
 			verifyCell(args, "define");
-			verifyCell(args->cdr, "define");
+			verifyCell(args->GetCdr(), "define");
 
-			auto firstArgument = args->car;
-			trueOrDie(firstArgument != empty_list, "No name specified for given function definition.");
+			auto it = args->begin();
+			trueOrDie(it != args->end(), "No name specified for given function definition.");
 
-			if (firstArgument->GetType() == kCellType_cons) {
+			if ((*it)->GetType() == kCellType_cons) {
 				// Defining a function.
 
 				// Get the name of the function we're defining.
-				auto currentParameter = std::static_pointer_cast<cons_cell>(firstArgument);
-				trueOrDie(currentParameter->car->GetType() == kCellType_symbol, "Function name in define declaration must be a symbol.");
-				auto functionName = std::static_pointer_cast<symbol_cell>(currentParameter->car)->GetIdentifier();
+				auto params = std::static_pointer_cast<cons_cell>(*it);
+				auto paramIt = params->begin();
+
+				trueOrDie((*paramIt)->GetType() == kCellType_symbol, "Function name in define declaration must be a symbol.");
+				auto functionName = std::static_pointer_cast<symbol_cell>(*paramIt)->GetIdentifier();
 
 				// The elements of the lamgbda
 				vector<shared_ptr<symbol_cell>> parameters; 
@@ -794,43 +795,46 @@ namespace elisp {
 				shared_ptr<symbol_cell> varargsName; 
 
 				// Get the parameter name list if there are any specified.
-				currentParameter = currentParameter->cdr;
+				++paramIt;
 				bool varargs = false;
-				while (currentParameter) {
-					trueOrDie(currentParameter->car->GetType() == kCellType_symbol,
+
+				for (;paramIt != params->end(); ++paramIt) {
+					trueOrDie((*paramIt)->GetType() == kCellType_symbol,
 							"Only symbols can be in the parameter list for a function definition.");
-					auto parameter = std::static_pointer_cast<symbol_cell>(currentParameter->car);
+					auto parameter = std::static_pointer_cast<symbol_cell>(*paramIt);
 					if (varargs) {
 						varargsName = parameter;
-						trueOrDie(currentParameter->cdr == empty_list, "Expected only one varargs identifier following '.' in parameter list of lambda definition");
+
+						auto next = paramIt;
+						++next;
+						trueOrDie(next != params->end(), "Expected only one varargs identifier following '.' in parameter list of lambda definition");
 					} else if (parameter->GetIdentifier() == ".") {
 						varargs = true;
-						trueOrDie(currentParameter->cdr != empty_list, "Expected varargs identifier following '.' in parameter list of lambda definition");
+
+						auto next = paramIt;
+						++next;
+						trueOrDie(next != params->end(), "Expected varargs identifier following '.' in parameter list of lambda definition");
 					} else {
 						parameters.push_back(parameter);
 					}
-					currentParameter = currentParameter->cdr;
 				}
 
 				// Get all the body expressions.
-				auto currentBodyExpr = args->cdr;
-				trueOrDie(currentBodyExpr, "At least one body expression is required when defining a function.");
-				while (currentBodyExpr) {
-					bodyExpressions.push_back(currentBodyExpr->car);
-					currentBodyExpr = currentBodyExpr->cdr;
-				}
+				++it;
+				trueOrDie(it != args->end(), "At least one body expression is required when defining a function.");
+				for (; it != args->end(); ++it)
+					bodyExpressions.push_back(*it);
 
 				// Construct a lambda and bind it to the function name.
 				env->mSymbolMap[functionName] =
 					std::make_shared<lambda_cell>(env, std::move(parameters), std::move(bodyExpressions), std::move(varargsName));
-			} else if (firstArgument->GetType() == kCellType_symbol) {
+			} else if ((*it)->GetType() == kCellType_symbol) {
 				// Defining a variable binding.
-				auto varName = std::static_pointer_cast<symbol_cell>(firstArgument)->GetIdentifier();
-				auto exp = args->cdr->car;
+				auto varName = std::static_pointer_cast<symbol_cell>(*it)->GetIdentifier();
+				++it;
+				env->mSymbolMap[varName] = env->eval(*it);
 
-				trueOrDie(args->cdr->cdr == empty_list, "define expects only 2 arguments when defining a variable binding.");
-
-				env->mSymbolMap[varName] = env->eval(exp);
+				trueOrDie(args->GetCdr()->GetCdr() == empty_list, "define expects only 2 arguments when defining a variable binding.");
 			} else {
 				die("Invalid first parameter passed to define.  Expected either a symbol or a list of symbols.");
 			}
@@ -853,6 +857,7 @@ namespace elisp {
 		}
 #endif // }}}
 
+#if 0
 		Cell lambda(shared_ptr<cons_cell> args, Env env) {
 			trueOrDie(args != empty_list, "Procedure 'lambda' requires at least 2 arguments, 0 given");
 			auto currentCell = args;
