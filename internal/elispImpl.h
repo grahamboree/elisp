@@ -807,7 +807,7 @@ namespace elisp {
 
 						auto next = paramIt;
 						++next;
-						trueOrDie(next != params->end(), "Expected only one varargs identifier following '.' in parameter list of lambda definition");
+						trueOrDie(next == params->end(), "Expected only one varargs identifier following '.' in parameter list of lambda definition");
 					} else if (parameter->GetIdentifier() == ".") {
 						varargs = true;
 
@@ -857,10 +857,9 @@ namespace elisp {
 		}
 #endif // }}}
 
-#if 0
 		Cell lambda(shared_ptr<cons_cell> args, Env env) {
 			trueOrDie(args != empty_list, "Procedure 'lambda' requires at least 2 arguments, 0 given");
-			auto currentCell = args;
+			auto it = args->begin();
 
 			// The elements of the lamgbda
 			vector<shared_ptr<symbol_cell>> lambdaParameters; 
@@ -868,46 +867,48 @@ namespace elisp {
 			shared_ptr<symbol_cell> varargsName; 
 			
 			// Get the paramter list 
-			if (currentCell->car->GetType() == kCellType_cons) {
-				auto parameters = std::static_pointer_cast<cons_cell>(currentCell->car);
+			if ((*it)->GetType() == kCellType_cons) {
+				auto parameters = std::static_pointer_cast<cons_cell>(*it);
 				
 				// Add the parameters.
-				auto currentParameter = parameters;
+				auto paramIt = parameters->begin();
 				bool varargs = false;
-				while (currentParameter) {
-					trueOrDie(currentParameter->car->GetType() == kCellType_symbol, "Expected only symbols in lambda parameter list.");
-					auto symbolCell = std::static_pointer_cast<symbol_cell>(currentParameter->car);
+				for (; paramIt != parameters->end(); ++paramIt) {
+					trueOrDie((*paramIt)->GetType() == kCellType_symbol, "Expected only symbols in lambda parameter list.");
+					auto symbolCell = std::static_pointer_cast<symbol_cell>(*paramIt);
 					if (varargs) {
 						varargsName = symbolCell;
-						trueOrDie(currentParameter->cdr == empty_list, "Only one identifier can follow a '.' in the parameter list of a lambda expression.");
+						auto next = paramIt;
+						++next;
+						trueOrDie(next == parameters->end(), "Only one identifier can follow a '.' in the parameter list of a lambda expression.");
 					} else if (symbolCell->GetIdentifier() == ".") {
 						varargs = true;
-						trueOrDie(currentParameter->cdr != empty_list, "Expected varargs name following '.' in lambda expression.");
+						auto next = paramIt;
+						++next;
+						trueOrDie(next != parameters->end(), "Expected varargs name following '.' in lambda expression.");
 					} else {
 						lambdaParameters.push_back(symbolCell);
 					}
-					currentParameter = currentParameter->cdr;
 				}
-			} else if (currentCell->car->GetType() == kCellType_symbol) {
-				varargsName = std::static_pointer_cast<symbol_cell>(currentCell->car);
+			} else if ((*it)->GetType() == kCellType_symbol) {
+				varargsName = std::static_pointer_cast<symbol_cell>(*it);
 			} else {
 				die("Second argument to a lambda expression must be either a symbol or a list of symbols.");
 			}
 
 			// Move past the list of parameters.
-			trueOrDie(currentCell->cdr != empty_list, "Procedure 'lambda' requires at least 2 arguments. 1 given.");
-			currentCell = currentCell->cdr;
+			++it;
+			trueOrDie(it != args->end(), "Procedure 'lambda' requires at least 2 arguments. 1 given.");
 
 			// Add the body expressions.
-			while (currentCell) {
-				bodyExpressions.push_back(currentCell->car);
-				currentCell = currentCell->cdr;
-			}
+			for (;it != args->end(); ++it)
+				bodyExpressions.push_back(*it);
 
 			// Create a lambda and return it.
 			return std::make_shared<lambda_cell>(env, std::move(lambdaParameters), std::move(bodyExpressions), std::move(varargsName));
 		}
 
+#if 0
 		Cell begin(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "begin");
 
