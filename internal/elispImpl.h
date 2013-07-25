@@ -524,21 +524,18 @@ namespace elisp {
 		}
 #endif // }}}
 
-#if 0
 		Cell div(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "/");
 
-			auto currentCell = args;
-			double value = GetNumericValue(env->eval(currentCell->car));
-			currentCell = currentCell->cdr;
+			auto it = args->begin();
+			double value = GetNumericValue(env->eval(*it));
+			++it;
 
-			if (!currentCell)
+			if (it == args->end())
 				return std::make_shared<number_cell>(1.0 / value);
 
-			while (currentCell) {
-				value /= GetNumericValue(env->eval(currentCell->car));
-				currentCell = currentCell->cdr;
-			}
+			for (;it != args->end(); ++it)
+				value /= GetNumericValue(env->eval(*it));
 
 			return std::make_shared<number_cell>(value);
 		}
@@ -548,7 +545,7 @@ namespace elisp {
 			Env testEnv = std::make_shared<Environment>();
 			add_globals(testEnv);
 			
-			// One arguments
+			// One argument
 			auto result = div(makeList({std::make_shared<number_cell>(2.0)}), testEnv);
 			REQUIRE(result->GetType() == kCellType_number);
 			
@@ -589,6 +586,7 @@ namespace elisp {
 		}
 #endif // }}}
 
+#if 0
 		Cell eq(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "=");
 
@@ -1031,8 +1029,8 @@ namespace elisp {
 			{"+", 		std::make_shared<proc_cell>(add)},
 			{"-", 		std::make_shared<proc_cell>(sub)},
 			{"*", 		std::make_shared<proc_cell>(mult)},
-			/*
 			{"/", 		std::make_shared<proc_cell>(div)},
+			/*
 			{"=", 		std::make_shared<proc_cell>(eq)},
 			{"if", 		std::make_shared<proc_cell>(if_then_else)},
 			{"quote", 	std::make_shared<proc_cell>(quote)},
