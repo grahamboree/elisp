@@ -146,7 +146,7 @@ namespace elisp {
 		char_cell(char inValue);
 		virtual ~char_cell() {}
 		virtual operator string();
-	//private:
+	private:
 		char value; // TODO this shouldn't be public.
 	};
 
@@ -155,8 +155,8 @@ namespace elisp {
 		string_cell(string inVal) :cell_t(kCellType_string), value(inVal) {}
 		virtual ~string_cell() {}
 		virtual operator string() { return value; }
-	//private:
-		string value; // TODO this shouldn't be public.
+	private:
+		string value;
 	};
 
 	class symbol_cell : public cell_t {
