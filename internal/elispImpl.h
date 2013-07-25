@@ -703,11 +703,10 @@ namespace elisp {
 		}
 #endif // }}}
 
-#if 0
 		Cell quote(shared_ptr<cons_cell> args, Env) {
 			verifyCell(args, "quote");
-			auto value = args->car;
-			trueOrDie(!args->cdr, "Too many arguments specified to \"quote\"");
+			auto value = args->GetCar();
+			trueOrDie(!args->GetCdr(), "Too many arguments specified to \"quote\"");
 			return value;
 		}
 
@@ -719,15 +718,27 @@ namespace elisp {
 			Cell result = quote(makeList({makeList({
 				std::make_shared<symbol_cell>("="),
 				std::make_shared<number_cell>(1.0),
-				std::make_shared<number_cell>(1.0)})}), testEnv);
+				std::make_shared<number_cell>(2.0)})}), testEnv);
 			REQUIRE(result->GetType() == kCellType_cons);
 			auto cons = std::static_pointer_cast<cons_cell>(result);
-			REQUIRE(cons->car->GetType() == kCellType_symbol);
-			auto equalSymbol = std::static_pointer_cast<symbol_cell>(cons->car);
+
+			REQUIRE(cons->GetCar()->GetType() == kCellType_symbol);
+			auto equalSymbol = std::static_pointer_cast<symbol_cell>(cons->GetCar());
 			REQUIRE(equalSymbol->GetIdentifier() == "=");
+
+			REQUIRE(cons->GetCdr()->GetCar()->GetType() == kCellType_number);
+			auto numberSymbol = std::static_pointer_cast<number_cell>(cons->GetCdr()->GetCar());
+			REQUIRE(numberSymbol->GetValue() == 1.0);
+
+			REQUIRE(cons->GetCdr()->GetCdr()->GetCar()->GetType() == kCellType_number);
+			numberSymbol = std::static_pointer_cast<number_cell>(cons->GetCdr()->GetCdr()->GetCar());
+			REQUIRE(numberSymbol->GetValue() == 2.0);
+
+			REQUIRE(cons->GetCdr()->GetCdr()->GetCdr() == empty_list);
 		}
 #endif // }}}
 
+#if 0
 		Cell set(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "set!");
 			verifyCell(args->cdr, "set!");
