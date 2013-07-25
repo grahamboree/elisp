@@ -178,15 +178,32 @@ namespace elisp {
 
 	class cons_cell : public cell_t, public std::enable_shared_from_this<cons_cell> {
 	public:
+		class iterator {
+			shared_ptr<cons_cell> currentCell;
+		public:
+			iterator(shared_ptr<cons_cell> startCell);
+
+			iterator& operator++();
+			iterator operator++(int);
+			bool operator==(const iterator& other);
+			bool operator!=(const iterator& other);
+
+			Cell operator *();
+		};
+
 		cons_cell(Cell inCar, shared_ptr<cons_cell> inCdr);
 		virtual ~cons_cell() {}
 		virtual operator string();
 
-		Cell GetCar() { return car; }
-		void SetCar(Cell newCar) { car = newCar; }
+		Cell GetCar();
+		void SetCar(Cell newCar);
 
-		shared_ptr<cons_cell> GetCdr() { return cdr; }
-		void SetCdr(shared_ptr<cons_cell> newCdr) { cdr = newCdr; }
+		shared_ptr<cons_cell> GetCdr();
+		void SetCdr(shared_ptr<cons_cell> newCdr);
+
+
+		iterator begin();
+		iterator end();
 
 	//private:
 		Cell car; // TODO this shouldn't be public.

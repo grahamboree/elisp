@@ -37,20 +37,45 @@ namespace elisp {
 	{
 	}
 
+	inline Cell cons_cell::GetCar() { return car; }
+	inline void cons_cell::SetCar(Cell newCar) { car = newCar; }
+	inline shared_ptr<cons_cell> cons_cell::GetCdr() { return cdr; }
+	inline void cons_cell::SetCdr(shared_ptr<cons_cell> newCdr) { cdr = newCdr; }
+
+	inline cons_cell::iterator cons_cell::begin() { return iterator(shared_from_this()); }
+	inline cons_cell::iterator cons_cell::end() { return iterator(empty_list); }
+
 	cons_cell::operator string() {
 		std::ostringstream ss;
 		ss << "(";
 
-		shared_ptr<cons_cell> currentCell = shared_from_this();
-		while (currentCell != nullptr) {
-			ss << currentCell->car;
-			currentCell = currentCell->cdr;
-			if (currentCell)
+		iterator it = begin();
+		while (it != end()) {
+			ss << *it;
+			++it;
+			if (it != end())
 				ss << " ";
 		}
 		ss << ")";
 		return ss.str();
 	}
+
+	inline cons_cell::iterator::iterator(shared_ptr<cons_cell> startCell) : currentCell(startCell) {}
+
+	inline cons_cell::iterator& cons_cell::iterator::operator++() {
+		currentCell = currentCell->GetCdr();
+		return (*this);
+	}
+
+	inline cons_cell::iterator cons_cell::iterator::operator++(int) {
+		iterator temp = *this;
+		currentCell = currentCell->cdr;
+		return temp;
+	}
+
+	inline bool cons_cell::iterator::operator==(const iterator& other) { return currentCell == other.currentCell; }
+	inline bool cons_cell::iterator::operator!=(const iterator& other) { return !((*this) == other); }
+	inline Cell cons_cell::iterator::operator *() { return currentCell ? currentCell->GetCar() : nullptr; }
 
 	inline lambda_cell::lambda_cell(Env outerEnv)
 	: cell_t(kCellType_lambda)
