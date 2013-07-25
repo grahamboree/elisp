@@ -195,7 +195,7 @@ namespace elisp {
 	 * indicate an empty list.
 	 */
 	inline bool cell_to_bool(Cell cell) {
-		return (cell != empty_list and (cell->type != kCellType_bool || static_cast<bool_cell*>(cell.get())->value));
+		return (cell != empty_list and (cell->type != kCellType_bool || static_cast<bool_cell*>(cell.get())->GetValue()));
 	}
 
 	/**

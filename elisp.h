@@ -127,7 +127,9 @@ namespace elisp {
 		virtual ~bool_cell() {}
 
 		virtual operator string();
-	//private:
+
+		bool GetValue() { return value; }
+	private:
 		bool value; // TODO this shouldn't be public.
 	};
 
