@@ -361,7 +361,7 @@ namespace elisp {
 			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = static_cast<number_cell*>(result.get());
-			REQUIRE(number->value == 1);
+			REQUIRE(number->GetValue() == 1);
 			 
 			// Two arguments
 			auto twoArgs = makeList({oneVal, oneVal});
@@ -370,7 +370,7 @@ namespace elisp {
 			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = static_cast<number_cell*>(result.get());
-			REQUIRE(number->value == 2);
+			REQUIRE(number->GetValue() == 2);
 			
 			// Seven arguments
 			shared_ptr<cons_cell> sevenArgs = makeList({
@@ -386,7 +386,7 @@ namespace elisp {
 			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = static_cast<number_cell*>(result.get());
-			REQUIRE(number->value == 7);
+			REQUIRE(number->GetValue() == 7);
 			
 			// Nested
 			shared_ptr<cons_cell> nested = makeList({
@@ -401,7 +401,7 @@ namespace elisp {
 			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = static_cast<number_cell*>(result.get());
-			REQUIRE(number->value == 3);
+			REQUIRE(number->GetValue() == 3);
 		}
 #endif // }}}
 
@@ -435,14 +435,14 @@ namespace elisp {
 			REQUIRE(result->GetType() == kCellType_number);
 			
 			auto number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->value == -1);
+			REQUIRE(number->GetValue() == -1);
 			
 			// Two arguments
 			result = sub(makeList({oneVal, oneVal}), testEnv);
 			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->value == 0);
+			REQUIRE(number->GetValue() == 0);
 			
 			// Seven arguments
 			result = sub(makeList({
@@ -456,7 +456,7 @@ namespace elisp {
 			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->value == 4);
+			REQUIRE(number->GetValue() == 4);
 			
 			// Nested
 			shared_ptr<cons_cell> nested = makeList({
@@ -471,7 +471,7 @@ namespace elisp {
 			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->value == 3);
+			REQUIRE(number->GetValue() == 3);
 		}
 #endif // }}}
 
@@ -500,7 +500,7 @@ namespace elisp {
 			REQUIRE(result->GetType() == kCellType_number);
 			
 			auto number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->value == 2);
+			REQUIRE(number->GetValue() == 2);
 			
 			// Seven arguments
 			result = mult(makeList({
@@ -514,7 +514,7 @@ namespace elisp {
 			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->value == 500);
+			REQUIRE(number->GetValue() == 500);
 			
 			// Nested
 			result = mult(makeList({
@@ -527,7 +527,7 @@ namespace elisp {
 			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->value == 24);
+			REQUIRE(number->GetValue() == 24);
 		}
 #endif // }}}
 
@@ -559,7 +559,7 @@ namespace elisp {
 			REQUIRE(result->GetType() == kCellType_number);
 			
 			auto number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->value == 0.5);
+			REQUIRE(number->GetValue() == 0.5);
 
 			// Two arguments
 			result = div(makeList({
@@ -568,7 +568,7 @@ namespace elisp {
 			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->value == 2);
+			REQUIRE(number->GetValue() == 2);
 			
 			// Seven arguments
 			result = div(makeList({
@@ -578,7 +578,7 @@ namespace elisp {
 			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->value == 2);
+			REQUIRE(number->GetValue() == 2);
 			
 			// Nested
 			result = div(makeList({
@@ -591,7 +591,7 @@ namespace elisp {
 			REQUIRE(result->GetType() == kCellType_number);
 			
 			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->value == 1);
+			REQUIRE(number->GetValue() == 1);
 		}
 #endif // }}}
 
@@ -681,7 +681,7 @@ namespace elisp {
 					std::make_shared<number_cell>(2.0)}), testEnv);
 			REQUIRE(result->GetType() == kCellType_number);
 			auto number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->value == 1.0);
+			REQUIRE(number->GetValue() == 1.0);
 
 			// Not Equal
 			result = if_then_else(makeList({
@@ -693,7 +693,7 @@ namespace elisp {
 					std::make_shared<number_cell>(2.0)}), testEnv);
 			REQUIRE(result->GetType() == kCellType_number);
 			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->value == 2.0);
+			REQUIRE(number->GetValue() == 2.0);
 
 			// Constant
 			result = if_then_else(makeList({
@@ -702,7 +702,7 @@ namespace elisp {
 					std::make_shared<number_cell>(2.0)}), testEnv);
 			REQUIRE(result->GetType() == kCellType_number);
 			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->value == 2.0);
+			REQUIRE(number->GetValue() == 2.0);
 
 			// Empty list
 			result = if_then_else(makeList({
@@ -711,7 +711,7 @@ namespace elisp {
 				std::make_shared<number_cell>(2.0)}), testEnv);
 			REQUIRE(result->GetType() == kCellType_number);
 			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->value == 2.0);
+			REQUIRE(number->GetValue() == 2.0);
 		}
 #endif // }}}
 
@@ -768,7 +768,7 @@ namespace elisp {
 			auto derpCell = testEnv->get("derp");
 			REQUIRE(derpCell->GetType() == kCellType_number);
 			auto num = std::static_pointer_cast<number_cell>(derpCell);
-			REQUIRE(num->value == 2);
+			REQUIRE(num->GetValue() == 2);
 		}
 #endif // }}}
 
@@ -849,7 +849,7 @@ namespace elisp {
 			auto derpCell = testEnv->get("derp");
 			REQUIRE(derpCell->GetType() == kCellType_number);
 			auto num = std::static_pointer_cast<number_cell>(derpCell);
-			REQUIRE(num->value == 2);
+			REQUIRE(num->GetValue() == 2);
 		}
 #endif // }}}
 
