@@ -634,22 +634,20 @@ namespace elisp {
 		}
 #endif // }}}
 
-#if 0
 		Cell if_then_else(shared_ptr<cons_cell> args, Env env) {
-			verifyCell(args, "if");
-
-			shared_ptr<cons_cell> currentCell = args;
+			auto currentCell = args;
 			
-			Cell test = currentCell->car;
-			currentCell = currentCell->cdr;
 			verifyCell(currentCell, "if");
+			Cell test = currentCell->GetCar();
+			currentCell = currentCell->GetCdr();
 
-			Cell conseq = currentCell->car;
-			currentCell = currentCell->cdr;
 			verifyCell(currentCell, "if");
+			Cell conseq = currentCell->GetCar();
+			currentCell = currentCell->GetCdr();
 
-			Cell alt	= currentCell->car;
-			currentCell = currentCell->cdr;
+			verifyCell(currentCell, "if");
+			Cell alt = currentCell->GetCar();
+			currentCell = currentCell->GetCdr();
 
 			trueOrDie(currentCell == empty_list, "Too many arguments specified to \"if\"");
 
@@ -705,6 +703,7 @@ namespace elisp {
 		}
 #endif // }}}
 
+#if 0
 		Cell quote(shared_ptr<cons_cell> args, Env) {
 			verifyCell(args, "quote");
 			auto value = args->car;
@@ -1028,9 +1027,9 @@ namespace elisp {
 			{"-", 		std::make_shared<proc_cell>(sub)},
 			{"*", 		std::make_shared<proc_cell>(mult)},
 			{"/", 		std::make_shared<proc_cell>(div)},
-			/*
 			{"=", 		std::make_shared<proc_cell>(eq)},
 			{"if", 		std::make_shared<proc_cell>(if_then_else)},
+			/*
 			{"quote", 	std::make_shared<proc_cell>(quote)},
 			{"set!",	std::make_shared<proc_cell>(set)},
 			{"define", 	std::make_shared<proc_cell>(define)},
