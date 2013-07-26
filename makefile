@@ -1,9 +1,9 @@
 COMPILE = clang++ -Wall -Wextra -pedantic -std=c++11 -stdlib=libc++
-INCLUDES = 
+INCLUDES = -I./src/ -I./src/interal -I./lib/
 DEFINES =
 EXEC_NAME = elisp
 
-HEADERS = $(shell ls *.h ./internal/*.h)
+HEADERS = $(shell ls ./src/*.h ./src/internal/*.h)
 ELISP_SRC = main.cpp
 
 all: elisp
