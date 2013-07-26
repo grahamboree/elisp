@@ -1060,8 +1060,8 @@ namespace elisp {
 			trueOrDie(it != args->end(), "Cons expects exactly 2 arguments");
 			Cell cdr = env->eval(*it);
 
-			/*++it;
-			trueOrDie(it == args->end(), "Cons expects exactly 2 arguments");*/
+			++it;
+			trueOrDie(it == args->end(), "Cons expects exactly 2 arguments");
 
 			return std::make_shared<cons_cell>(car, cdr);
 		}
@@ -1090,6 +1090,36 @@ namespace elisp {
 			REQUIRE(num->GetValue() == 2.0);
 		}
 #endif // }}}
+
+		Cell car(shared_ptr<cons_cell> args, Env env) {
+			auto it = args->begin();
+			trueOrDie(it != args->end(), "car expects exactly 1 argument");
+			Cell cell = env->eval(*it);
+
+			++it;
+			trueOrDie(it == args->end(), "Cons expects exactly 2 arguments");
+
+			trueOrDie(cell, "Cannot get the car of an empty list");
+			trueOrDie(cell->GetType() == kCellType_cons, "Cannot get the car of something that's not a cons cell");
+			
+			return std::static_pointer_cast<cons_cell>(cell)->GetCar();
+		}
+
+#ifdef ELISP_TEST // {{{
+		TEST_CASE("prelude/car", "car") {
+			Env testEnv = std::make_shared<Environment>();
+			add_globals(testEnv);
+			testEnv->mSymbolMap["derp"] = std::make_shared<number_cell>(1.0);
+
+			auto expr = Program::read("(cons 1 2)");
+			auto result = car(makeList({expr}), testEnv);
+
+			REQUIRE(result);
+			REQUIRE(result->GetType() == kCellType_number);
+			auto num = std::static_pointer_cast<number_cell>(result);
+			REQUIRE(num->GetValue() == 1.0);
+		}
+#endif // }}}
 	} // }}}
 	
 	/**
@@ -1115,6 +1145,7 @@ namespace elisp {
 			{"<", 		std::make_shared<proc_cell>(less)},
 			{"exit", 	std::make_shared<proc_cell>(exit)},
 			{"cons", 	std::make_shared<proc_cell>(cons)},
+			{"car", 	std::make_shared<proc_cell>(car)},
 		});
 	}
 	// }}}
