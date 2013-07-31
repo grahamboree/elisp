@@ -1334,7 +1334,7 @@ namespace elisp {
 			R"(\s*)" // skip whitespace
 		   "("
 				",@|" 				// splice unquote
-				R"([\('`,\)]|)" 			// parens, quoting symbols
+				R"([\('`,\)]|)" 	// parens, quoting symbols
 				R"("(?:[\\].|[^\\"])*"|)" // string literals
 				";.*|" 				// comments
 				R"([^\s('"`,;)]*))" // identifiers
