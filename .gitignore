@@ -5,6 +5,7 @@ elispTests
 *.o
 *.swp
 *.swo
+*.pyc
 gtest/lib/*
 gtest/lib/libgtest.a
 elisp.xcodeproj/xcuserdata
