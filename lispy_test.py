@@ -101,22 +101,26 @@ def test(tests, name=''):
 	"For each (exp, expected) test case, see if eval(parse(exp)) == expected."
 	fails = 0
 	for (x, expected) in tests:
+		test = ''
+		extext = ''
 		try:
 			result = eval(parse(x))
-			print x, '=>', to_string(result)
+			test = x + '=>' + to_string(result)
 			ok = (result == expected)
 		except Exception as e:
-			print x, '=raises=>', type(e).__name__, e
+			extext = x + '=raises=>' + type(e).__name__ + str(e)
 			ok = issubclass(expected, Exception) and isinstance(e, expected)
 		if not ok:
 			fails += 1
-			print 'FAIL!!!  Expected', expected
+			print test, extext, 'FAIL!!!  Expected', expected
+			exit(1)
 	print '%s %s: %d out of %d tests fail.' % ('*'*45, name, fails, len(tests))
 	if fails == 0:
 		print "\nSUCCESS\n";
+		exit(0)
 
 if __name__ == '__main__':
 	from lispy import *
-	test(lis_tests+lispy_tests, 'lispy.py')
+	test(lis_tests + lispy_tests, 'lispy.py')
 	#test(lis_tests, 'lispy.py')
 
