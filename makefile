@@ -6,7 +6,10 @@ EXEC_NAME = elisp
 HEADERS = $(shell ls ./src/*.h ./src/internal/*.h)
 ELISP_SRC = main.cpp
 
-all: elisp
+all: elisp lispy
+
+lispy:
+	python ./lispy_test.py
 
 test: $(HEADERS) elisp.pch
 	$(COMPILE) $(INCLUDES) -O0 -DCATCH_CONFIG_MAIN -DELISP_TEST -include catch.hpp $(ELISP_SRC) -o elispTests
