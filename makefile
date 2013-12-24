@@ -16,8 +16,8 @@ test: $(HEADERS) elisp.pch
 elisp: $(HEADERS) $(ELISP_SRC)
 	$(COMPILE) $(INCLUDES) $(DEFINES) $(ELISP_SRC) -O4 -o $(EXEC_NAME)
 
-elisp.pch: catch.hpp
-	$(COMPILE) -DCATCH_CONFIG_MAIN -x c++-header catch.hpp -o elisp.pch
+elisp.pch: ./lib/catch.hpp
+	$(COMPILE) -DCATCH_CONFIG_MAIN -x c++-header ./lib/catch.hpp -o elisp.pch
 
 clean:
 	rm -f *.o
