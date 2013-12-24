@@ -2,6 +2,10 @@ from __future__ import division
 from sets import Set
 import re, sys, StringIO
 
+def require(x, predicate, msg="wrong length"):
+	"""Signal a syntax error if predicate is false."""
+	if not predicate:
+		raise SyntaxError(to_string(x) + ': ' + msg)
 
 class Procedure(object):
 	"""A user-defined Scheme procedure."""
@@ -13,7 +17,6 @@ class Procedure(object):
 
 	def __call__(self, *args): 
 		return eval(self.exp, Env(self.parms, args, self.env))
-
 
 class InPort(object):
 	"""An input port. Retains a line of chars."""
@@ -33,7 +36,6 @@ class InPort(object):
 			token, self.line = re.match(InPort.tokenizer, self.line).groups()
 			if token != '' and not token.startswith(';'):
 				return token
-
 
 class Env(dict):
 	"""An environment: a dict of {'var':val} pairs, with an outer Env."""
@@ -103,9 +105,7 @@ class Env(dict):
 			'write' 	: lambda x, port = sys.stdout: port.write(to_string(x)),
 		})
 
-
 class Symbol(str): pass
-
 
 class SymbolTable(object):
 	def __init__(self, *args, **kwargs):
@@ -116,12 +116,6 @@ class SymbolTable(object):
 		if key not in self.symbols:
 			self.symbols[key] = Symbol(key)
 		return self.symbols[key]
-
-
-def require(x, predicate, msg="wrong length"):
-	"""Signal a syntax error if predicate is false."""
-	if not predicate:
-		raise SyntaxError(to_string(x) + ': ' + msg)
 
 ################ parse, read, and user interaction
 def parse(inport):
@@ -135,7 +129,7 @@ def read(inport):
 	"""Read a Scheme expression from an input port."""
 
 	def atom(token):
-		"""Numbers become numbers; #t and #f are booleans; "..." string; otherwise Symbol."""
+		''''Numbers become numbers; #t and #f are booleans; "..." string; otherwise Symbol.''''
 		if token == '#t':
 			return True
 		elif token == '#f':
@@ -192,7 +186,6 @@ def load(filename):
 
 def repl(prompt = 'lispy> ', inport = InPort(sys.stdin), out = sys.stdout):
 	"""A prompt-read-eval-print loop."""
-
 	sys.stderr.write("Lispy version 2.0\n")
 	while True:
 		try:
@@ -240,10 +233,10 @@ def callcc(proc):
 
 ################ Evaluation
 def eval(x, env = None):
+	"""Evaluate an expression in an environment."""
 	if env is None:
 		env = global_env
 
-	"""Evaluate an expression in an environment."""
 	while True:
 		if isinstance(x, Symbol):		# variable reference
 			return env.find(x)[x]
@@ -398,6 +391,130 @@ eval(parse("""(begin
 				`(if ,(car args) (and ,@(cdr args)) #f)))))
 	;; More macros can also go here
 )"""))
+
+
+class Runtime(object):
+	sym = SymbolTable()
+	_quote		= sym["quote"]
+	_if			= sym["if"]
+	_set		= sym["set!"]
+	_define		= sym["define"]
+	_lambda		= sym["lambda"]
+	_begin		= sym["begin"]
+	_definemacro= sym["define-macro"]
+	_append 	= sym["append"]
+	_cons 		= sym["cons"]
+	_let 		= sym["let"]
+	_quasiquote = sym["quasiquote"]
+	_unquote	= sym["unquote"]
+	_unquotesplicing = sym["unquote-splicing"]
+	_append 	= sym["append"]
+	_cons 		= sym["cons"]
+	_let 		= sym["let"]
+
+	eof_object = Symbol('#<eof-object>') # Note: uninterned; can't be read
+
+	def __init__(self, *args, **kwargs):
+		self.global_env = Env()
+		self.global_env.add_globals()
+
+		self.macro_table = {
+			_let : let
+		}
+
+		eval(parse("""(begin
+			(define-macro and (lambda args 
+				(if (null? args) #t
+					(if (= (length args) 1) (car args)
+						`(if ,(car args) (and ,@(cdr args)) #f)))))
+			;; More macros can also go here
+		)"""))
+
+	@staticmethod
+	def let(*args):
+		"""Let macro"""
+		args = list(args)
+		x = cons(_let, args)
+		require(x, len(args)>1)
+		bindings, body = args[0], args[1:]
+		require(x, all(isinstance(b, list) and len(b)==2 and isinstance(b[0], Symbol)
+				for b in bindings), "illegal binding list")
+		vars, vals = zip(*bindings)
+		return [[_lambda, list(vars)]+map(expand, body)] + map(expand, vals)
+
+	def eval(x, env = None):
+		"""Evaluate an expression in an environment."""
+		if env is None:
+			env = global_env
+
+		while True:
+			if isinstance(x, Symbol):		# variable reference
+				return env.find(x)[x]
+			elif not isinstance(x, list):	# constant literal
+				return x					
+			elif x[0] is _quote:	# (quote exp)
+				(_, exp) = x
+				return exp
+			elif x[0] is _if:		# (if test conseq alt)
+				(_, test, conseq, alt) = x
+				x = (conseq if eval(test, env) else alt)
+			elif x[0] is _set:		# (set! var exp)
+				(_, var, exp) = x
+				env.find(var)[var] = eval(exp, env)
+				return None
+			elif x[0] is _define:	# (define var exp)
+				(_, var, exp) = x
+				env[var] = eval(exp, env)
+				return None
+			elif x[0] is _lambda:	# (lambda (var*) exp)
+				(_, vars, exp) = x
+				return Procedure(vars, exp, env)
+			elif x[0] is _begin:	# (begin exp+)
+				for exp in x[1:-1]:
+					eval(exp, env)
+				x = x[-1]
+			else:						# (proc exp*)
+				exps = [eval(exp, env) for exp in x]
+				proc = exps.pop(0)
+				if isinstance(proc, Procedure):
+					x = proc.exp
+					env = Env(proc.parms, exps, proc.env)
+				else:
+					return proc(*exps)
+
+	@staticmethod
+	def is_pair(x):
+		"""Returns whether the given object a pair"""
+		return x != [] and isinstance(x, list)
+
+	@staticmethod
+	def cons(x, y):
+		"""Cons"""
+		return [x]+y
+
+	@staticmethod
+	def readchar(inport):
+		"""Read the next character from an input port."""
+		if inport.line != '':
+			ch, inport.line = inport.line[0], inport.line[1:]
+			return ch
+		else:
+			return inport.file.read(1) or eof_object
+	
+	@staticmethod
+	def callcc(proc):
+		"""Call proc with current continuation; escape only"""
+		ball = RuntimeWarning("Sorry, can't continue this continuation any longer.")
+		def throw(retval):
+			ball.retval = retval;
+			raise ball
+		try:
+			return proc(throw)
+		except RuntimeWarning as w:
+			if w is ball:
+				return ball.retval
+			else:
+				raise w
 
 if __name__ == '__main__':
 	repl()
