@@ -12,13 +12,14 @@ def require(x, predicate, msg="wrong length"):
 class Procedure(object):
 	"""A user-defined Scheme procedure."""
 	
-	def __init__(self, parms, exp, env):
+	def __init__(self, parms, exp, env, runtime):
 		self.parms = parms
 		self.exp = exp
 		self.env = env
+		self.runtime = runtime
 
 	def __call__(self, *args): 
-		return eval(self.exp, Env(self.parms, args, self.env))
+		return self.runtime.eval(self.exp, Env(self.parms, args, self.env))
 
 
 class InPort(object):
@@ -62,6 +63,7 @@ class Env(dict):
 			raise LookupError(var)
 		else:
 			return self.outer.find(var)
+
 
 class Symbol(str): pass
 
@@ -226,7 +228,7 @@ class Runtime(object):
 			'eof-object?': lambda x: x is eof_object,
 			'eq?' 		: op.is_,
 			'equal?'	: op.eq,
-			'eval' 		: lambda x: eval(expand(x)),
+			'eval' 		: lambda x: eval(self.expand(x)),
 			'length'	: len,
 			'list' 		: lambda *x:list(x),
 			'list?' 	: lambda x:isinstance(x,list),
@@ -282,7 +284,7 @@ class Runtime(object):
 				return None
 			elif x[0] is _lambda:	# (lambda (var*) exp)
 				(_, vars, exp) = x
-				return Procedure(vars, exp, env)
+				return Procedure(vars, exp, env, self)
 			elif x[0] is _begin:	# (begin exp+)
 				for exp in x[1:-1]:
 					self.eval(exp, env)
@@ -312,7 +314,7 @@ class Runtime(object):
 			else:
 				return [_cons, expand_quasiquote(x[0]), expand_quasiquote(x[1:])]
 
-		require(x, x!=[])				# () => Error
+		require(x, x != [])				# () => Error
 		if not isinstance(x, list):		# constant => unchanged
 			return x
 		elif x[0] is _quote:			# (quote exp)
@@ -358,7 +360,9 @@ class Runtime(object):
 			require(x, len(x)==2)
 			return expand_quasiquote(x[1])
 		elif isinstance(x[0], Symbol) and x[0] in self.macro_table:
-			return self.expand(macro_table[x[0]](*x[1:]), toplevel) # (m arg...) 
+			macro = self.macro_table[x[0]]
+			args = x[1:]
+			return self.expand(macro(*args), toplevel) # (m arg...) 
 		else:										#		=> macroexpand if m isa macro
 			return map(self.expand, x)				# (f arg...) => expand each
 
@@ -368,6 +372,10 @@ class Runtime(object):
 		if isinstance(inport, str):
 			inport = InPort(StringIO.StringIO(inport))
 		return self.expand(read(inport), toplevel=True)
+	
+	def run(self, code):
+		inport = InPort(StringIO.StringIO(code))
+		return self.eval(self.expand(read(inport), toplevel=True))
 
 	def let(self, *args):
 		""" Builtin let macro """
@@ -377,7 +385,7 @@ class Runtime(object):
 		bindings, body = args[0], args[1:]
 		require(x, all(isinstance(b, list) and len(b)==2 and isinstance(b[0], Symbol) for b in bindings), "illegal binding list")
 		vars, vals = zip(*bindings)
-		return [[_lambda, list(vars)]+map(expand, body)] + map(expand, vals)
+		return [[_lambda, list(vars)]+map(self.expand, body)] + map(self.expand, vals)
 
 	def repl(self, prompt = 'lispy> ', inport = InPort(sys.stdin), out = sys.stdout):
 		"""A prompt-read-eval-print loop."""
