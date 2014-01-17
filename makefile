@@ -10,6 +10,7 @@ all: elisp lispy
 
 lispy:
 	python ./lispy_test.py
+	python ./r6rs_test.py
 
 test: $(HEADERS) elisp.pch
 	$(COMPILE) $(INCLUDES) -O0 -DCATCH_CONFIG_MAIN -DELISP_TEST -include catch.hpp $(ELISP_SRC) -o elispTests

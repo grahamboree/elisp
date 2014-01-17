@@ -10,7 +10,7 @@ class lispy_tests(unittest.TestCase):
 			("(a1 10)", 110),
 			("(a1 10)", 120),
 		]
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in account_test:
 			self.assertEqual(runtime.run(expression), expected)
 	
@@ -28,12 +28,12 @@ class lispy_tests(unittest.TestCase):
 			("(< (square-root 200.) 14.14215)", True),
 			("(= (square-root 200.) (sqrt 200.))", True),
 		]
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in newton_tests:
 			self.assertEqual(runtime.run(expression), expected)
 
 	def test_syntax_errors(self):
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		syntax_errors = [
 			"()",
 			"(set! x)",
@@ -52,7 +52,7 @@ class lispy_tests(unittest.TestCase):
 				runtime.run(expression)
 	
 	def test_lookup_errors(self):
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		lookup_errors = [
 			"(foo 1 2)",
 			"x"
@@ -65,7 +65,7 @@ class lispy_tests(unittest.TestCase):
 		quote_tests = [
 			("(quote (testing 1 (2.0) -3.14e159))", ['testing', 1, [2.0], -3.14e159]),
 		]
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in quote_tests:
 			self.assertEqual(runtime.run(expression), expected)
 
@@ -74,7 +74,7 @@ class lispy_tests(unittest.TestCase):
 			("(+ 2 2)", 4),
 			("(+ (* 2 100) (* 1 10))", 210),
 		]
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in basic_math_tests:
 			self.assertEqual(runtime.run(expression), expected)
 
@@ -85,7 +85,7 @@ class lispy_tests(unittest.TestCase):
 			("(if (> 6 5) (+ 1 1) (+ 2 2))", 2),
 			("(if (< 6 5) (+ 1 1) (+ 2 2))", 4),
 		]
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in if_tests:
 			self.assertEqual(runtime.run(expression), expected)
 
@@ -95,7 +95,7 @@ class lispy_tests(unittest.TestCase):
 			("x", 3),
 			("(+ x x)", 6),
 		]
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in env_tests:
 			self.assertEqual(runtime.run(expression), expected)
 
@@ -103,7 +103,7 @@ class lispy_tests(unittest.TestCase):
 		set_tests = [
 			("(begin (define x 1) (set! x (+ x 1)) (+ x 1))", 3),
 		];
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in set_tests:
 			self.assertEqual(runtime.run(expression), expected)
 
@@ -111,7 +111,7 @@ class lispy_tests(unittest.TestCase):
 		lambda_tests = [
 			("((lambda (x) (+ x x)) 5)", 10),
 		]
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in lambda_tests:
 			self.assertEqual(runtime.run(expression), expected)
 	
@@ -121,7 +121,7 @@ class lispy_tests(unittest.TestCase):
 			("(fact 3)", 6),
 			("(fact 50)", 30414093201713378043612608166064768844377641568960512000000000000),
 		]
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in factorial_tests:
 			self.assertEqual(runtime.run(expression), expected)
 		
@@ -152,7 +152,7 @@ class lispy_tests(unittest.TestCase):
 			("((repeat riff-shuffle) (list 1 2 3 4 5 6 7 8))",  [1, 3, 5, 7, 2, 4, 6, 8]),
 			("(riff-shuffle (riff-shuffle (riff-shuffle (list 1 2 3 4 5 6 7 8))))", [1,2,3,4,5,6,7,8]),
 		]
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in riff_shuffle_tests:
 			self.assertEqual(runtime.run(expression), expected)
 
@@ -168,7 +168,7 @@ class lispy_tests(unittest.TestCase):
 			("(define lyst (lambda items items))", None),
 			("(lyst 1 2 3 (+ 2 2))", [1,2,3,4]),
 		]
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in lyst_tests:
 			self.assertEqual(runtime.run(expression), expected)
 
@@ -180,22 +180,22 @@ class lispy_tests(unittest.TestCase):
 				(sumsq-acc start end 0))""", None),
 			("(sum-squares-range 1 3000)", 9004500500), ## Tests tail recursion
 		]
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in sum_squares_tests:
 			self.assertEqual(runtime.run(expression), expected)
 
 	def test_call_cc(self):
 		call_cc_tests = [
-			#("(call/cc (lambda (throw) (+ 5 (* 10 (throw 1))))) ;; throw", 1),
-			#("(call/cc (lambda (throw) (+ 5 (* 10 1)))) ;; do not throw", 15),
-			#("""(call/cc (lambda (throw) 
-			#	(+ 5 (* 10 (call/cc (lambda (escape) (* 100 (escape 3)))))))) ; 1 level""", 35),
-			#("""(call/cc (lambda (throw) 
-			#	(+ 5 (* 10 (call/cc (lambda (escape) (* 100 (throw 3)))))))) ; 2 levels""", 3),
-			#("""(call/cc (lambda (throw) 
-			#	(+ 5 (* 10 (call/cc (lambda (escape) (* 100 1))))))) ; 0 levels""", 1005),
+			("(call/cc (lambda (throw) (+ 5 (* 10 (throw 1))))) ;; throw", 1),
+			("(call/cc (lambda (throw) (+ 5 (* 10 1)))) ;; do not throw", 15),
+			("""(call/cc (lambda (throw) 
+				(+ 5 (* 10 (call/cc (lambda (escape) (* 100 (escape 3)))))))) ; 1 level""", 35),
+			("""(call/cc (lambda (throw) 
+				(+ 5 (* 10 (call/cc (lambda (escape) (* 100 (throw 3)))))))) ; 2 levels""", 3),
+			("""(call/cc (lambda (throw) 
+				(+ 5 (* 10 (call/cc (lambda (escape) (* 100 1))))))) ; 0 levels""", 1005),
 		]
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in call_cc_tests:
 			self.assertEqual(runtime.run(expression), expected)
 
@@ -204,7 +204,7 @@ class lispy_tests(unittest.TestCase):
 			("(* 1i 1i)", -1),
 			("(sqrt -1)", 1j),
 		]
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in complex_number_tests:
 			self.assertEqual(runtime.run(expression), expected)
 	
@@ -212,7 +212,7 @@ class lispy_tests(unittest.TestCase):
 		let_tests = [
 			("(let ((a 1) (b 2)) (+ a b))", 3),
 		]
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in let_tests:
 			self.assertEqual(runtime.run(expression), expected)
 
@@ -223,7 +223,7 @@ class lispy_tests(unittest.TestCase):
 			("(and)", True),
 			("(and (> 2 1) (> 2 3))", False),
 		]
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in and_tests:
 			self.assertEqual(runtime.run(expression), expected)
 
@@ -231,9 +231,9 @@ class lispy_tests(unittest.TestCase):
 		unless_tests = [
 			("(define-macro unless (lambda args `(if (not ,(car args)) (begin ,@(cdr args))))) ; test `", None),
 			("(unless (= 2 (+ 1 1)) (display 2) 3 4)", None),
-			#(r'(unless (= 4 (+ 1 1)) (display 2) (display "\n") 3 4)', 4),
+			(r'(unless (= 4 (+ 1 1)) (display 2) (display "\n") 3 4)', 4),
 		]
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in unless_tests:
 			self.assertEqual(runtime.run(expression), expected)
 
@@ -244,7 +244,7 @@ class lispy_tests(unittest.TestCase):
 			("'x", 'x'),
 			("'(one 2 3)", ['one', 2, 3]),
 		]
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in quote_tests:
 			self.assertEqual(runtime.run(expression), expected)
 	
@@ -254,7 +254,7 @@ class lispy_tests(unittest.TestCase):
 			("`(testing ,@L testing)", ['testing',1,2,3,'testing']),
 			("`(testing ,L testing)", ['testing',[1,2,3],'testing']),
 		]
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in splice_quote_tests:
 			self.assertEqual(runtime.run(expression), expected)
 
@@ -265,7 +265,7 @@ class lispy_tests(unittest.TestCase):
 				2 ; more ; comments ; ) )
 				3) ; final comment""", [1,2,3]),
 		]
-		runtime = Runtime()
+		runtime = SchemeRuntime()
 		for (expression, expected) in comments_tests:
 			self.assertEqual(runtime.run(expression), expected)
 

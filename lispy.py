@@ -2,26 +2,13 @@ from __future__ import division
 from sets import Set
 import re, sys, StringIO
 
-################ Helper classes 
+#### UTILITIES ####
 def require(x, predicate, msg="wrong length"):
 	"""Signal a syntax error if predicate is false."""
 	if not predicate:
 		raise SyntaxError(to_string(x) + ': ' + msg)
 
-
-class Procedure(object):
-	"""A user-defined Scheme procedure."""
-	
-	def __init__(self, parms, exp, env, runtime):
-		self.parms = parms
-		self.exp = exp
-		self.env = env
-		self.runtime = runtime
-
-	def __call__(self, *args): 
-		return self.runtime.eval(self.exp, Env(self.parms, args, self.env))
-
-
+################ Helper classes 
 class InPort(object):
 	"""An input port. Retains a line of chars."""
 	tokenizer = r"""\s*(,@|[('`,)]|"(?:[\\].|[^\\"])*"|;.*|[^\s('"`,;)]*)(.*)"""
@@ -65,18 +52,21 @@ class Env(dict):
 			return self.outer.find(var)
 
 
+##### SCHEME DATA TYPES ####
+class Procedure(object):
+	"""A user-defined Scheme procedure."""
+	
+	def __init__(self, parms, exp, env, runtime):
+		self.parms = parms
+		self.exp = exp
+		self.env = env
+		self.runtime = runtime
+
+	def __call__(self, *args): 
+		return self.runtime.eval(self.exp, Env(self.parms, args, self.env))
+
+
 class Symbol(str): pass
-
-
-class SymbolTable(object):
-	def __init__(self, *args, **kwargs):
-		self.symbols = {}
-
-	def __getitem__(self, key):
-		"""Find or create unique Symbol entry for str s in symbol table."""
-		if key not in self.symbols:
-			self.symbols[key] = Symbol(key)
-		return self.symbols[key]
 
 
 ################ read and write
@@ -144,14 +134,6 @@ def cons(x, y):
 	"""Cons"""
 	return [x]+y
 
-def readchar(inport):
-	"""Read the next character from an input port."""
-	if inport.line != '':
-		ch, inport.line = inport.line[0], inport.line[1:]
-		return ch
-	else:
-		return inport.file.read(1) or eof_object
-
 def callcc(proc):
 	"""Call proc with current continuation; escape only"""
 	ball = RuntimeWarning("Sorry, can't continue this continuation any longer.")
@@ -166,7 +148,25 @@ def callcc(proc):
 		else:
 			raise w
 
+def readchar(inport):
+	"""Read the next character from an input port."""
+	if inport.line != '':
+		ch, inport.line = inport.line[0], inport.line[1:]
+		return ch
+	else:
+		return inport.file.read(1) or eof_object
+
 ################ Symbols
+class SymbolTable(object):
+	def __init__(self, *args, **kwargs):
+		self.symbols = {}
+
+	def __getitem__(self, key):
+		"""Find or create unique Symbol entry for str s in symbol table."""
+		if key not in self.symbols:
+			self.symbols[key] = Symbol(key)
+		return self.symbols[key]
+
 eof_object = Symbol('#<eof-object>') # Note: uninterned; can't be read
 
 sym = SymbolTable()
@@ -193,10 +193,11 @@ quotes = {
 }
 
 ################ Runtime object
-class Runtime(object):
+class SchemeRuntime(object):
 	def __init__(self, *args, **kwargs):
-		#Add some Scheme standard procedures.
 		self.global_env = Env()
+		self.macro_table = {}
+		#Add some Scheme standard procedures.
 		self._add_standard_procs()
 		self._add_builtin_macros()
 	
@@ -246,10 +247,7 @@ class Runtime(object):
 		})
 	
 	def _add_builtin_macros(self):
-		self.macro_table = {
-			_let : self.let
-		}
-
+		self.macro_table[_let] = self.let
 		self.eval(self.parse("""(begin
 			(define-macro and (lambda args 
 				(if (null? args) #t
@@ -325,7 +323,7 @@ class Runtime(object):
 			require(x, len(x)==4)
 			return map(self.expand, x)
 		elif x[0] is _set:						
-			require(x, len(x)==3); 
+			require(x, len(x)==3) 
 			var = x[1]					# (set! non-var exp) => Error
 			require(x, isinstance(var, Symbol), "can set! only a symbol")
 			return [_set, var, self.expand(x[2])]
