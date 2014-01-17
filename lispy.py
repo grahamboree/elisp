@@ -2,6 +2,7 @@ from __future__ import division
 from sets import Set
 import re, sys, StringIO
 
+################ Helper classes 
 def require(x, predicate, msg="wrong length"):
 	"""Signal a syntax error if predicate is false."""
 	if not predicate:
@@ -75,8 +76,8 @@ class SymbolTable(object):
 			self.symbols[key] = Symbol(key)
 		return self.symbols[key]
 
-################ parse, read, and user interaction
 
+################ read and write
 def read(inport):
 	"""Read a Scheme expression from an input port."""
 
@@ -132,26 +133,6 @@ def to_string(x):
 		return str(x).replace('j', 'i')
 	return str(x)
 
-def load(filename):
-	"""Eval every expression from a file."""
-	repl(None, InPort(open(filename)), None)
-
-def repl(prompt = 'lispy> ', inport = InPort(sys.stdin), out = sys.stdout):
-	"""A prompt-read-eval-print loop."""
-	sys.stderr.write("Lispy version 2.0\n")
-	while True:
-		try:
-			if prompt:
-				sys.stderr.write(prompt)
-			x = parse(inport)
-			if x is eof_object:
-				return
-			val = eval(x)
-			if val is not None and out:
-				print >> out, to_string(val)
-		except Exception as e:
-			print '%s: %s' % (type(e).__name__, e)
-
 ################ Prelude
 def is_pair(x):
 	"""Returns whether the given object a pair"""
@@ -183,10 +164,7 @@ def callcc(proc):
 		else:
 			raise w
 
-################ Macro Expansion
-
-################ Builtin macros
-
+################ Symbols
 eof_object = Symbol('#<eof-object>') # Note: uninterned; can't be read
 
 sym = SymbolTable()
@@ -212,6 +190,7 @@ quotes = {
 	",@": _unquotesplicing
 }
 
+################ Runtime object
 class Runtime(object):
 	def __init__(self, *args, **kwargs):
 		#Add some Scheme standard procedures.
@@ -390,7 +369,7 @@ class Runtime(object):
 			inport = InPort(StringIO.StringIO(inport))
 		return self.expand(read(inport), toplevel=True)
 
-	def let(*args):
+	def let(self, *args):
 		""" Builtin let macro """
 		args = list(args)
 		x = cons(_let, args)
@@ -400,6 +379,27 @@ class Runtime(object):
 		vars, vals = zip(*bindings)
 		return [[_lambda, list(vars)]+map(expand, body)] + map(expand, vals)
 
+	def repl(self, prompt = 'lispy> ', inport = InPort(sys.stdin), out = sys.stdout):
+		"""A prompt-read-eval-print loop."""
+		sys.stderr.write("Lispy version 2.0\n")
+		while True:
+			try:
+				if prompt:
+					sys.stderr.write(prompt)
+				x = self.parse(inport)
+				if x is eof_object:
+					return
+				val = self.eval(x)
+				if val is not None and out:
+					print >> out, to_string(val)
+			except Exception as e:
+				print '%s: %s' % (type(e).__name__, e)
+
+	def load(self, filename):
+		"""Eval every expression from a file."""
+		self.repl(None, InPort(open(filename)), None)
+
 if __name__ == '__main__':
-	repl()
+	runtime = Runtime()
+	runtime.repl()
 
