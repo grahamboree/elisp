@@ -13,3 +13,5 @@ elisp.xcodeproj/project.xcworkspace
 elisp.xcodeproj/xcuserdata
 reference/
 *.pch
+.idea
+.idea/
