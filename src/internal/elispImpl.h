@@ -1,342 +1,15 @@
 // vim: set foldmethod=marker:
-/*
- *
- */
+//
+//  elispImpl.h
+//  Implementation of elisp
+//
+//  Created by Graham Pentheny on 12/21/14.
+//  Copyright (c) 2014 Graham Pentheny. All rights reserved.
+//
 
 #pragma once
 
 namespace elisp {
-	// Assertion functions
-	void die(string message) { throw std::logic_error(message); }
-	template<typename T> void trueOrDie(T condition, string message) { if (!condition) die(message); }
-	shared_ptr<cons_cell> makeList(vector<Cell> list); // Forward-declared because it's used in lambda_cell::eval
-
-	// Cells {{{
-	inline cell_t::cell_t(eCellType inType)
-	: type(inType)
-	{
-	}
-
-	inline std::ostream& operator << (std::ostream& os, Cell obj) {
-		return (os << (obj ? static_cast<string>(*obj) : "'()"));
-	}
-
-	inline number_cell::operator string() {
-		if (valueString.empty()) {
-			std::ostringstream ss;
-			ss << ((value == (int)value) ? (int)value : value);
-			return ss.str();
-		}
-		return valueString;
-	}
-
-	inline cons_cell::cons_cell(Cell inCar, Cell inCdr)
-	: cell_t(kCellType_cons)
-	, car(inCar)
-	, cdr(inCdr)
-	{
-	}
-
-	inline Cell cons_cell::GetCar() { return car; }
-	inline void cons_cell::SetCar(Cell newCar) { car = newCar; }
-	inline Cell cons_cell::GetCdr() { return cdr; }
-	inline void cons_cell::SetCdr(Cell newCdr) { cdr = newCdr; }
-
-	inline cons_cell::iterator cons_cell::begin() { return iterator(shared_from_this()); }
-	inline cons_cell::iterator cons_cell::end() { return iterator(empty_list); }
-
-	cons_cell::operator string() {
-		std::ostringstream ss;
-		auto consCell = shared_from_this();
-		ss << "(";
-		bool addSpace = false;
-		while (true) {
-			if (addSpace)
-				ss << " ";
-			addSpace = true;
-			ss << consCell->car;
-			if (!consCell->cdr) {
-				break;
-			} else if (consCell->cdr->GetType() == kCellType_cons) {
-				consCell = std::static_pointer_cast<cons_cell>(consCell->cdr);
-			} else {
-				ss << " . " << consCell->cdr;
-				break;
-			}
-		}
-		ss << ")";
-		return ss.str();
-	}
-
-	inline cons_cell::iterator::iterator(shared_ptr<cons_cell> startCell) : currentCell(startCell) {}
-
-	inline cons_cell::iterator& cons_cell::iterator::operator++() {
-		trueOrDie(currentCell->cdr == empty_list or currentCell->cdr->GetType() == kCellType_cons,
-				"Attempting to iterate through a cons-list that does not contain a cons cell in the cdr position.");
-		currentCell = std::static_pointer_cast<cons_cell>(currentCell->cdr);
-		return (*this);
-	}
-
-	inline cons_cell::iterator cons_cell::iterator::operator++(int) {
-		iterator temp = *this;
-		trueOrDie(currentCell->cdr == empty_list or currentCell->cdr->GetType() == kCellType_cons,
-				"Attempting to iterate through a cons-list that does not contain a cons cell in the cdr position.");
-		currentCell = std::static_pointer_cast<cons_cell>(currentCell->cdr);
-		return temp;
-	}
-
-	inline bool cons_cell::iterator::operator==(const iterator& other) { return currentCell == other.currentCell; }
-	inline bool cons_cell::iterator::operator!=(const iterator& other) { return !((*this) == other); }
-	inline Cell cons_cell::iterator::operator *() { return currentCell ? currentCell->GetCar() : nullptr; }
-
-	inline lambda_cell::lambda_cell(Env outerEnv)
-	: cell_t(kCellType_lambda)
-	, env(outerEnv)
-	, mVarargsName(nullptr)
-	{
-	}
-
-	inline lambda_cell::lambda_cell(Env outerEnv,
-			vector<shared_ptr<symbol_cell>>&& inParameters,
-			vector<Cell>&& inBodyExpressions,
-			shared_ptr<symbol_cell>&& inVarargsName)
-	: cell_t(kCellType_lambda)
-	, env(outerEnv)
-	, mParameters(inParameters)
-	, mBodyExpressions(inBodyExpressions)
-	, mVarargsName(inVarargsName)
-	{
-	}
-
-	Cell lambda_cell::eval(shared_ptr<cons_cell> args, Env currentEnv) {
-		Env newEnv = std::make_shared<Environment>(env);
-
-		// Match the arguments to the parameters.
-		auto it = args->begin();
-		for (auto paramID : mParameters) {
-			trueOrDie(it != args->end(), "insufficient arguments provided to function");
-			newEnv->mSymbolMap[paramID->GetIdentifier()] = currentEnv->eval(args->GetCar());
-			++it;
-		}
-
-		// Either store the rest of the arguments in the variadic name,
-		// or error out that there were too many.
-		if (mVarargsName) {
-			vector<Cell> varargs;
-			for (;it != args->end();++it)
-				varargs.push_back(currentEnv->eval(*it));
-			newEnv->mSymbolMap[mVarargsName->GetIdentifier()] = makeList(varargs);
-		} else if (it != args->end()) {
-			die("Too many arguments specified to lambda.");
-		}
-
-		// Evaluate the body expressions with the new environment.  Return the result of the last body expression.
-		Cell returnVal;
-		for (auto bodyExpr : mBodyExpressions)
-			returnVal = newEnv->eval(bodyExpr);
-
-		return returnVal;
-	}
-
-	lambda_cell::operator string() {
-		std::ostringstream ss;
-		ss << "(lambda (";
-
-		// parameters
-		if (mVarargsName and mParameters.empty()) {
-			ss << mVarargsName;
-		} else {
-			bool addspace = false;
-			for (auto param : mParameters) {
-				if (addspace)
-					ss << " ";
-				else
-					addspace = true;
-				ss << param;
-			}
-			if (mVarargsName)
-				ss << " . " << mVarargsName;
-
-			ss << ") ";
-		}
-
-		// body expressions
-		bool addspace = false;
-		for (auto bodyExpr : mBodyExpressions) {
-			if (addspace)
-				ss << " ";
-			else
-				addspace = true;
-			ss << bodyExpr;
-		}
-		ss << ")";
-
-		return ss.str();
-	}
-
-	template<typename T>
-	inline bool_cell::bool_cell(T inValue)
-	: cell_t(kCellType_bool)
-	, value(inValue)
-	{
-	}
-
-	inline bool_cell::bool_cell(bool inValue)
-	:cell_t(kCellType_bool)
-	, value(inValue)
-	{
-	}
-
-	inline bool_cell::operator string() {
-		return value ? "#t" : "#f";
-	}
-
-	inline number_cell::number_cell(double inValue)
-	:cell_t(kCellType_number)
-	, value(inValue)
-	{
-	}
-
-	inline char_cell::char_cell(char inValue)
-	:cell_t(kCellType_char)
-	, value(inValue)
-	{
-	}
-
-	inline char_cell::operator string() {
-		std::ostringstream ss;
-		ss << value;
-		return ss.str();
-	}
-
-	inline proc_cell::proc_cell(std::function<Cell(shared_ptr<cons_cell>, Env)> procedure)
-	: cell_t(kCellType_procedure)
-	, mProcedure(procedure)
-	{
-	}
-
-	inline Cell proc_cell::evalProc(shared_ptr<cons_cell> args, Env env) {
-		return mProcedure(args, env);
-	};
-
-	inline proc_cell::operator string() {
-		return "#procedure";
-	}
-
-	// }}}
-
-	// Util {{{
-	/**
-	 * Converts a Cell to a bool.  Handles nullptr which is used to
-	 * indicate an empty list.
-	 */
-	inline bool cell_to_bool(Cell cell) {
-		return (cell != empty_list and (cell->GetType() != kCellType_bool || static_cast<bool_cell*>(cell.get())->GetValue()));
-	}
-
-	/**
-	 * Replaces all occurances of \p from with \p to in \p str
-	 */
-	inline void replaceAll(string& str, const string& from, const string& to) {
-		string::size_type pos = 0;
-		while((pos = str.find(from, pos)) != string::npos) {
-			str.replace(pos, from.length(), to);
-			pos += to.length();
-		}
-	}
-
-	/**
-	 * Returns \c true if \p inValue is a string representation of a number, \c false otherwise.
-	 */
-	bool isNumber(string inValue) {
-		string::const_iterator it = inValue.begin();
-		bool hasRadix = false;
-		bool hasDigit = false;
-
-		if (!inValue.empty() && ((hasDigit = (isdigit(*it) != 0)) || *it == '-')) {
-			++it;
-			for (;it != inValue.end(); ++it) {
-				bool digit = (isdigit(*it) != 0);
-				hasDigit = hasDigit || digit;
-				if (!(digit || (!hasRadix && (hasRadix = (*it == '.')))))
-					break;
-			}
-			return hasDigit && it == inValue.end();
-		}
-		return false;
-	}
-
-	/**
-	 * A helper that creates a lisp list given a vector of the list's contents.
-	 *
-	 * A convenient use-case:
-	 * cons_cell* cons_cell = makeList({ new symbol_cell("+"), new number_cell(1), new number_cell(2)});
-	 */
-	shared_ptr<cons_cell> makeList(vector<Cell> list) {
-		shared_ptr<cons_cell> result;
-		vector<Cell>::const_reverse_iterator iter;
-		for (iter = list.rbegin(); iter != list.rend(); ++iter)
-			result = std::make_shared<cons_cell>(*iter, result);
-		return result;
-	}
-	// }}}
-	
-	// Environment {{{
-	inline Environment::Environment() {}
-	inline Environment::Environment(Env inOuter) :outer(inOuter) {}
-
-	inline Env Environment::find(const string& var) {
-		if (mSymbolMap.find(var) != mSymbolMap.end())
-			return shared_from_this();
-		trueOrDie(outer, "Undefined symbol " + var);
-		return outer->find(var);
-	}
-
-	inline Cell Environment::get(const string& var) {
-		return mSymbolMap.find(var)->second;
-	}
-
-	Cell Environment::eval(Cell x) {
-		trueOrDie(x != nullptr, "Missing procedure.  Original code was most likely (), which is illegal.");
-		
-		if (x->GetType() == kCellType_symbol) {
-			// Symbol lookup in the current environment.
-			const string& id = static_cast<symbol_cell*>(x.get())->GetIdentifier();
-			return find(id)->get(id);
-		} else if (x->GetType() == kCellType_cons) {
-			// Function call
-			cons_cell* listcell = static_cast<cons_cell*>(x.get());
-			Cell callable = this->eval(listcell->GetCar());
-
-			// If the first argument is a symbol, look it up in the current environment.
-			if (callable->GetType() == kCellType_symbol) {
-				string callableName = static_cast<symbol_cell*>(callable.get())->GetIdentifier();
-
-				Env enclosingEnvironment = find(callableName);
-				trueOrDie(enclosingEnvironment, "Undefined function: " + callableName);
-
-				callable = enclosingEnvironment->get(callableName);
-			}
-
-			if (callable->GetType() == kCellType_procedure) { 
-				// Eval the procedure with the rest of the arguments.
-				trueOrDie(listcell->GetCdr()->GetType() == kCellType_cons, "Cannot call a procedure with something that's not a cons-list.");
-				return static_cast<proc_cell*>(callable.get())->evalProc(
-						std::static_pointer_cast<cons_cell>(listcell->GetCdr()),
-						shared_from_this());
-			} else if (callable->GetType() == kCellType_lambda) { 
-				// Eval the lambda with the rest of the arguments.
-				trueOrDie(listcell->GetCdr()->GetType() == kCellType_cons, "Cannot call a lambda with something that's not a cons-list.");
-				return static_cast<lambda_cell*>(callable.get())->eval(
-						std::static_pointer_cast<cons_cell>(listcell->GetCdr()),
-						shared_from_this());
-			}
-			die("Expected procedure or lambda as first element in an sexpression.");
-		}
-		return x;
-	}
-	// }}}
-
 	// Prelude {{{
 	void add_globals(Env env); // Forward-declared because the test cases need to set up Environments.
 
@@ -367,64 +40,6 @@ namespace elisp {
 			return std::make_shared<number_cell>(result);
 		};
 
-#ifdef ELISP_TEST // {{{
-		TEST_CASE("prelude/add", "+") {
-			Env testEnv = std::make_shared<Environment>();
-			add_globals(testEnv);
-			Cell result;
-			number_cell* number;
-			auto oneVal = std::make_shared<number_cell>(1.0);
-			
-			// One argument
-			auto oneArg = makeList({oneVal});
-			
-			result = add(oneArg, testEnv);
-			REQUIRE(result->GetType() == kCellType_number);
-			
-			number = static_cast<number_cell*>(result.get());
-			REQUIRE(number->GetValue() == 1);
-			 
-			// Two arguments
-			auto twoArgs = makeList({oneVal, oneVal});
-			
-			result = add(twoArgs, testEnv);
-			REQUIRE(result->GetType() == kCellType_number);
-			
-			number = static_cast<number_cell*>(result.get());
-			REQUIRE(number->GetValue() == 2);
-			
-			// Seven arguments
-			shared_ptr<cons_cell> sevenArgs = makeList({
-				oneVal,
-				oneVal,
-				oneVal,
-				oneVal,
-				oneVal,
-				oneVal,
-				oneVal});
-			
-			result = add(sevenArgs, testEnv);
-			REQUIRE(result->GetType() == kCellType_number);
-			
-			number = static_cast<number_cell*>(result.get());
-			REQUIRE(number->GetValue() == 7);
-			
-			// Nested
-			shared_ptr<cons_cell> nested = makeList({
-				oneVal,
-				makeList({
-					std::make_shared<symbol_cell>("+"),
-					oneVal,
-					oneVal})
-				});
-			
-			result = add(nested, testEnv);
-			REQUIRE(result->GetType() == kCellType_number);
-			
-			number = static_cast<number_cell*>(result.get());
-			REQUIRE(number->GetValue() == 3);
-		}
-#endif // }}}
 
 		Cell sub(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "-");
@@ -444,57 +59,6 @@ namespace elisp {
 			return std::make_shared<number_cell>(result); 
 		}
 
-#ifdef ELISP_TEST // {{{
-		TEST_CASE("prelude/sub", "-") {
-			Env testEnv = std::make_shared<Environment>();
-			add_globals(testEnv);
-			auto oneVal = std::make_shared<number_cell>(1.0);
-			
-			// One argument
-			auto result = sub(makeList({oneVal}), testEnv);
-			REQUIRE(result->GetType() == kCellType_number);
-			
-			auto number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->GetValue() == -1);
-			
-			// Two arguments
-			result = sub(makeList({oneVal, oneVal}), testEnv);
-			REQUIRE(result->GetType() == kCellType_number);
-			
-			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->GetValue() == 0);
-			
-			// Seven arguments
-			result = sub(makeList({
-				std::make_shared<number_cell>(10.0),
-				oneVal,
-				oneVal,
-				oneVal,
-				oneVal,
-				oneVal,
-				oneVal}), testEnv);
-			REQUIRE(result->GetType() == kCellType_number);
-			
-			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->GetValue() == 4);
-			
-			// Nested
-			shared_ptr<cons_cell> nested = makeList({
-				std::make_shared<number_cell>(5.0),
-				makeList({
-					std::make_shared<symbol_cell>("-"),
-					std::make_shared<number_cell>(2.0),
-					oneVal}),
-				oneVal});
-			
-			result = sub(nested, testEnv);
-			REQUIRE(result->GetType() == kCellType_number);
-			
-			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->GetValue() == 3);
-		}
-#endif // }}}
-
 		Cell mult(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "*");
 
@@ -504,49 +68,6 @@ namespace elisp {
 
 			return std::make_shared<number_cell>(result);
 		}
-
-#ifdef ELISP_TEST // {{{
-		TEST_CASE("prelude/mult", "*") {
-			Env testEnv = std::make_shared<Environment>();
-			add_globals(testEnv);
-			
-			// Two arguments
-			auto result = mult(makeList({
-				std::make_shared<number_cell>(1.0),
-				std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->GetType() == kCellType_number);
-			
-			auto number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->GetValue() == 2);
-			
-			// Seven arguments
-			result = mult(makeList({
-				std::make_shared<number_cell>(10.0),
-				std::make_shared<number_cell>(2.0),
-				std::make_shared<number_cell>(1.0),
-				std::make_shared<number_cell>(-1.0),
-				std::make_shared<number_cell>(0.5),
-				std::make_shared<number_cell>(10.0),
-				std::make_shared<number_cell>(-5.0)}), testEnv);
-			REQUIRE(result->GetType() == kCellType_number);
-			
-			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->GetValue() == 500);
-			
-			// Nested
-			result = mult(makeList({
-				std::make_shared<number_cell>(2.0),
-				makeList({
-					std::make_shared<symbol_cell>("*"),
-					std::make_shared<number_cell>(2.0),
-					std::make_shared<number_cell>(3.0)}),
-				std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->GetType() == kCellType_number);
-			
-			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->GetValue() == 24);
-		}
-#endif // }}}
 
 		Cell div(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "/");
@@ -564,52 +85,6 @@ namespace elisp {
 			return std::make_shared<number_cell>(value);
 		}
 
-#ifdef ELISP_TEST // {{{
-		TEST_CASE("prelude/div", "/") {
-			Env testEnv = std::make_shared<Environment>();
-			add_globals(testEnv);
-			
-			// One argument
-			auto result = div(makeList({std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->GetType() == kCellType_number);
-			
-			auto number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->GetValue() == 0.5);
-
-			// Two arguments
-			result = div(makeList({
-				std::make_shared<number_cell>(4.0),
-				std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->GetType() == kCellType_number);
-			
-			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->GetValue() == 2);
-			
-			// Seven arguments
-			result = div(makeList({
-				std::make_shared<number_cell>(10.0),
-				std::make_shared<number_cell>(2.0),
-				std::make_shared<number_cell>(2.5)}), testEnv);
-			REQUIRE(result->GetType() == kCellType_number);
-			
-			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->GetValue() == 2);
-			
-			// Nested
-			result = div(makeList({
-				std::make_shared<number_cell>(4.0),
-				makeList({
-					std::make_shared<symbol_cell>("/"),
-					std::make_shared<number_cell>(2.0),
-					std::make_shared<number_cell>(1.0)}),
-				std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->GetType() == kCellType_number);
-			
-			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->GetValue() == 1);
-		}
-#endif // }}}
-
 		Cell eq(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "=");
 
@@ -625,38 +100,6 @@ namespace elisp {
 				result = result && (value == GetNumericValue(env->eval(*it)));
 			return std::make_shared<bool_cell>(result);
 		}
-
-#ifdef ELISP_TEST // {{{
-		TEST_CASE("prelude/eq", "=") {
-			Env testEnv = std::make_shared<Environment>();
-			add_globals(testEnv);
-
-			// Two arguments
-			auto result = eq(makeList({
-				std::make_shared<number_cell>(2.0),
-				std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->GetType() == kCellType_bool);
-			REQUIRE(cell_to_bool(result));
-			
-			// Seven arguments
-			result = eq(makeList({
-				std::make_shared<number_cell>(-0.0),
-				std::make_shared<number_cell>(0.0),
-				std::make_shared<number_cell>(0.0)}), testEnv);
-			REQUIRE(result->GetType() == kCellType_bool);
-			REQUIRE(cell_to_bool(result));
-			
-			// Nested
-			result = eq(makeList({
-				std::make_shared<number_cell>(4.0),
-				makeList({
-					std::make_shared<symbol_cell>("*"),
-					std::make_shared<number_cell>(2.0),
-					std::make_shared<number_cell>(2.0)})}), testEnv);
-			REQUIRE(result->GetType() == kCellType_bool);
-			REQUIRE(cell_to_bool(result));
-		}
-#endif // }}}
 
 		Cell if_then_else(shared_ptr<cons_cell> args, Env env) {
 			auto it = args->begin();
@@ -678,93 +121,12 @@ namespace elisp {
 			return env->eval((cell_to_bool(env->eval(test)) ? conseq : alt));
 		}
 
-#ifdef ELISP_TEST // {{{
-		TEST_CASE("prelude/if", "if") {
-			Env testEnv = std::make_shared<Environment>();
-			add_globals(testEnv);
-
-			// Equal
-			auto result = if_then_else(makeList({
-					makeList({
-						std::make_shared<symbol_cell>("="),
-						std::make_shared<number_cell>(1.0),
-						std::make_shared<number_cell>(1.0)}),
-					std::make_shared<number_cell>(1.0),
-					std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->GetType() == kCellType_number);
-			auto number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->GetValue() == 1.0);
-
-			// Not Equal
-			result = if_then_else(makeList({
-					makeList({
-						std::make_shared<symbol_cell>("="),
-						std::make_shared<number_cell>(2.0),
-						std::make_shared<number_cell>(1.0)}),
-					std::make_shared<number_cell>(1.0),
-					std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->GetType() == kCellType_number);
-			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->GetValue() == 2.0);
-
-			// Constant
-			result = if_then_else(makeList({
-					std::make_shared<bool_cell>(false),
-					std::make_shared<number_cell>(1.0),
-					std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->GetType() == kCellType_number);
-			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->GetValue() == 2.0);
-
-			// Empty list
-			result = if_then_else(makeList({
-				std::make_shared<bool_cell>(empty_list),
-				std::make_shared<number_cell>(1.0),
-				std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(result->GetType() == kCellType_number);
-			number = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(number->GetValue() == 2.0);
-		}
-#endif // }}}
-
 		Cell quote(shared_ptr<cons_cell> args, Env) {
 			verifyCell(args, "quote");
 			auto value = args->GetCar();
 			trueOrDie(!args->GetCdr(), "Too many arguments specified to \"quote\"");
 			return value;
 		}
-
-#ifdef ELISP_TEST // {{{
-		TEST_CASE("prelude/quote", "quote") {
-			Env testEnv = std::make_shared<Environment>();
-			add_globals(testEnv);
-
-			Cell result = quote(makeList({makeList({
-				std::make_shared<symbol_cell>("="),
-				std::make_shared<number_cell>(1.0),
-				std::make_shared<number_cell>(2.0)})}), testEnv);
-			REQUIRE(result->GetType() == kCellType_cons);
-			auto cons = std::static_pointer_cast<cons_cell>(result);
-			auto it = cons->begin();
-
-			REQUIRE((*it)->GetType() == kCellType_symbol);
-			auto equalSymbol = std::static_pointer_cast<symbol_cell>(*it);
-			REQUIRE(equalSymbol->GetIdentifier() == "=");
-
-			++it;
-			REQUIRE((*it)->GetType() == kCellType_number);
-			auto numberSymbol = std::static_pointer_cast<number_cell>(*it);
-			REQUIRE(numberSymbol->GetValue() == 1.0);
-
-			++it;
-			REQUIRE((*it)->GetType() == kCellType_number);
-			numberSymbol = std::static_pointer_cast<number_cell>(*it);
-			REQUIRE(numberSymbol->GetValue() == 2.0);
-
-			++it;
-			REQUIRE(it == cons->end());
-		}
-#endif // }}}
 
 		Cell set(shared_ptr<cons_cell> args, Env env) {
 			verifyCell(args, "set!");
@@ -783,23 +145,6 @@ namespace elisp {
 			e->mSymbolMap[id] = env->eval(exp);
 			return empty_list;
 		}
-
-#ifdef ELISP_TEST // {{{
-		TEST_CASE("prelude/set!", "set!") {
-			Env testEnv = std::make_shared<Environment>();
-			add_globals(testEnv);
-			testEnv->mSymbolMap["derp"] = std::make_shared<number_cell>(1.0);
-
-			set(makeList({
-					std::make_shared<symbol_cell>("derp"),
-					std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(testEnv->find("derp") == testEnv);
-			auto derpCell = testEnv->get("derp");
-			REQUIRE(derpCell->GetType() == kCellType_number);
-			auto num = std::static_pointer_cast<number_cell>(derpCell);
-			REQUIRE(num->GetValue() == 2);
-		}
-#endif // }}}
 
 		Cell define(shared_ptr<cons_cell> args, Env env) {
 			// Make sure we got enough arguments.
@@ -870,22 +215,6 @@ namespace elisp {
 			}
 			return empty_list;
 		}
-
-#ifdef ELISP_TEST // {{{
-		TEST_CASE("prelude/define", "define") {
-			Env testEnv = std::make_shared<Environment>();
-			add_globals(testEnv);
-
-			define(makeList({
-						std::make_shared<symbol_cell>("derp"),
-						std::make_shared<number_cell>(2.0)}), testEnv);
-			REQUIRE(testEnv->find("derp") == testEnv);
-			auto derpCell = testEnv->get("derp");
-			REQUIRE(derpCell->GetType() == kCellType_number);
-			auto num = std::static_pointer_cast<number_cell>(derpCell);
-			REQUIRE(num->GetValue() == 2);
-		}
-#endif // }}}
 
 		Cell lambda(shared_ptr<cons_cell> args, Env env) {
 			trueOrDie(args != empty_list, "Procedure 'lambda' requires at least 2 arguments, 0 given");
@@ -1066,31 +395,6 @@ namespace elisp {
 			return std::make_shared<cons_cell>(car, cdr);
 		}
 
-#ifdef ELISP_TEST // {{{
-		TEST_CASE("prelude/cons", "cons") {
-			Env testEnv = std::make_shared<Environment>();
-			add_globals(testEnv);
-			testEnv->mSymbolMap["derp"] = std::make_shared<number_cell>(1.0);
-
-			Cell result = cons(makeList({std::make_shared<number_cell>(1.0), std::make_shared<number_cell>(2.0)}), testEnv);
-
-			REQUIRE(result);
-			REQUIRE(result->GetType() == kCellType_cons);
-			
-			auto consCell = std::static_pointer_cast<cons_cell>(result);
-
-			REQUIRE(consCell->GetCar());
-			REQUIRE(consCell->GetCar()->GetType() == kCellType_number);
-			auto num = std::static_pointer_cast<number_cell>(consCell->GetCar());
-			REQUIRE(num->GetValue() == 1.0);
-
-			REQUIRE(consCell->GetCdr());
-			REQUIRE(consCell->GetCdr()->GetType() == kCellType_number);
-			num = std::static_pointer_cast<number_cell>(consCell->GetCdr());
-			REQUIRE(num->GetValue() == 2.0);
-		}
-#endif // }}}
-
 		Cell car(shared_ptr<cons_cell> args, Env env) {
 			auto it = args->begin();
 			trueOrDie(it != args->end(), "car expects exactly 1 argument");
@@ -1104,22 +408,6 @@ namespace elisp {
 			
 			return std::static_pointer_cast<cons_cell>(cell)->GetCar();
 		}
-
-#ifdef ELISP_TEST // {{{
-		TEST_CASE("prelude/car", "car") {
-			Env testEnv = std::make_shared<Environment>();
-			add_globals(testEnv);
-			testEnv->mSymbolMap["derp"] = std::make_shared<number_cell>(1.0);
-
-			auto expr = Program::read("(cons 1 2)");
-			auto result = car(makeList({expr}), testEnv);
-
-			REQUIRE(result);
-			REQUIRE(result->GetType() == kCellType_number);
-			auto num = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(num->GetValue() == 1.0);
-		}
-#endif // }}}
 
 		Cell cdr(shared_ptr<cons_cell> args, Env env) {
 			auto it = args->begin();
@@ -1135,21 +423,13 @@ namespace elisp {
 			return std::static_pointer_cast<cons_cell>(cell)->GetCdr();
 		}
 
-#ifdef ELISP_TEST // {{{
-		TEST_CASE("prelude/cdr", "cdr") {
-			Env testEnv = std::make_shared<Environment>();
-			add_globals(testEnv);
-			testEnv->mSymbolMap["derp"] = std::make_shared<number_cell>(1.0);
-
-			auto expr = Program::read("(cons 1 2)");
-			auto result = cdr(makeList({expr}), testEnv);
-
-			REQUIRE(result);
-			REQUIRE(result->GetType() == kCellType_number);
-			auto num = std::static_pointer_cast<number_cell>(result);
-			REQUIRE(num->GetValue() == 2.0);
+		Cell length(shared_ptr<cons_cell> args, Env env) {
+			trueOrDie(args, "Function less requires at least one arguments");
+			auto it = args->begin();
+			Cell leftCell = env->eval(*it);
+			trueOrDie(leftCell->GetType() == kCellType_cons, "Function length accepts only list arguments");
+			return std::make_shared<number_cell>(listLength(leftCell));
 		}
-#endif // }}}
 	} // }}}
 	
 	/**
@@ -1177,6 +457,7 @@ namespace elisp {
 			{"cons", 	std::make_shared<proc_cell>(cons)},
 			{"car", 	std::make_shared<proc_cell>(car)},
 			{"cdr", 	std::make_shared<proc_cell>(cdr)},
+			{"length", 	std::make_shared<proc_cell>(length)},
 		});
 	}
 	// }}}
@@ -1208,125 +489,97 @@ namespace elisp {
 		return "";
 	}
 
-	/**
-	 * Given a string token, creates the atom it represents
-	 */
-	Cell Program::atom(const string& token) {
-		if (token[0] == '#') {
-			const auto& boolid = token[1];
-			bool val = (boolid == 't' || boolid == 'T');
-			trueOrDie((val || boolid == 'f' || boolid == 'F') && token.size() == 2, "Unknown identifier " + token);
-			return std::static_pointer_cast<cell_t>(std::make_shared<bool_cell>(val));
-		} else if (token[0] == '"') {
-			return std::static_pointer_cast<cell_t>(std::make_shared<string_cell>(token));
-		} else if (isNumber(token)) {
-			std::istringstream iss(token);
-			double value = 0.0;
-			iss >> value;
-			auto n = std::make_shared<number_cell>(value);
-			n->SetValueString(token);
-			return std::static_pointer_cast<cell_t>(n);
+	// Expand `x => 'x; `,x => x; `(,@x y) => (append x y) 
+	Cell expand_quasiquote(Cell x) {
+		if (x->GetType() != kCellType_cons) {
+			return makeList({std::make_shared<symbol_cell>("quote"), x});
 		}
 
-		return std::static_pointer_cast<cell_t>(std::make_shared<symbol_cell>(token));
-	}
+		Cell car = std::static_pointer_cast<cons_cell>(x)->GetCar();
+		trueOrDie(
+			car->GetType() == kCellType_symbol &&
+			std::static_pointer_cast<symbol_cell>(car)->GetIdentifier() == "unquote-splicing",
+			"can't splice here");
+		
+		if (car->GetType() == kCellType_symbol &&
+			std::static_pointer_cast<symbol_cell>(car)->GetIdentifier() == "unquote") {
+			trueOrDie(
+				x->GetType() == kCellType_cons &&
+				listLength(std::static_pointer_cast<cons_cell>(x)) == 2,
+				"");
 
-	/**
-	 * Returns a list of top-level expressions.
-	 */
-	std::vector<Cell> Program::read(TokenStream& stream) {
-		std::vector<std::vector<Cell>> exprStack; // The current stack of nested list expressions.
-		exprStack.emplace_back(); // top-level scope
-
-		for (string token = stream.nextToken(); !token.empty(); token = stream.nextToken()) {
-			if (token == "(") {
-				// Push a new scope onto the stack.
-				exprStack.emplace_back();
-			} else if (token == ")") {
-				// Pop the current scope off the stack and add it as a list to its parent scope.
-				trueOrDie(exprStack.size() > 1, "Unexpected ) while reading");
-				Cell listexpr = makeList(exprStack.back());
-				exprStack.pop_back();
-				exprStack.back().push_back(listexpr);
-			} else {
-				exprStack.back().push_back(atom(token));
-			}
+			auto list = std::static_pointer_cast<cons_cell>(x);
+			return list->GetCdr()->GetCar();
 		}
-
-		trueOrDie(exprStack.size() == 1, "Unexpected EOF while reading");
-		return exprStack.back();
+		/*
+		if x[0] is _unquote:
+			require(x, len(x) == 2)
+			return x[1]
+		elif is_pair(x[0]) and x[0][0] is _unquotesplicing:
+			require(x[0], len(x[0]) == 2)
+			return [_append, x[0][1], expand_quasiquote(x[1:])]
+		else:
+			return [_cons, expand_quasiquote(x[0]), expand_quasiquote(x[1:])]
+		*/
+		return nullptr;
 	}
 
-	/**
-	 * Returns a list of top-level expressions.
-	 */
-	inline std::vector<Cell> Program::read(string s) {
-		std::istringstream iss(s);
-		TokenStream tokStream(iss);
-		return read(tokStream);
-	}
-
-	inline string Program::to_string(Cell exp) {
-		if (exp == nullptr)
-			return "'()";
-
-		std::ostringstream ss;
-		ss << exp;
-		return ss.str();
-	}
-
-	inline Program::Program() {
-		global_env = std::make_shared<Environment>();
-		add_globals(global_env);
-	}
-
-	/// Eval a string of code and give the result as a string.
-	inline string Program::runCode(string inCode) {
-		std::istringstream iss(inCode);
-		TokenStream tokStream(iss);
-		return runCode(tokStream);
-	}
-
-	/// Given a stream, read and eval the code read from the stream.
-	string Program::runCode(TokenStream& stream) {
-		using std::cerr;
-		using std::endl;
-
-		try {
-			Cell result = nullptr;
-			for (auto expr : read(stream))
-				result = global_env->eval(expr);
-			return to_string(result);
-		} catch (const std::logic_error& e) {
-			// logic_error's are thrown for invalid code.
-			cerr << "[ERROR]\t" << e.what() << endl;
-		} catch (const std::exception& e) {
-			// runtime_error's are internal errors at no fault of the user.
-			cerr << endl << endl << "--[SYSTEM ERROR]--" << endl << endl << e.what() << endl << endl;
-		} catch (...) {
-			cerr << endl << endl << "--[SYSTEM ERROR]--" << endl << endl << "An unkown error occured" << endl << endl;
-		}
-		return "";
-	}
-
-	/// Read eval print loop.
-	void Program::repl(string prompt) {
-		using std::cout;
-		using std::endl;
-
-		while (true) {
-			cout << prompt;
-
-			string raw_input;
-			if (!std::getline(std::cin, raw_input)) {
-				cout << endl << endl;
-				break;
-			}
-
-			if (raw_input.empty() or raw_input.find_first_not_of(" \t") == string::npos)
-				continue;
-			cout << runCode(raw_input) << endl;
-		}
+	Cell Program::expand(Cell x, bool topLevel) {
+		/*
+		require(x, x != [])                # () => Error
+		if not isinstance(x, list):        # constant => unchanged
+			return x
+		elif x[0] is _quote:            # (quote exp)
+			require(x, len(x) == 2)
+			return x
+		elif x[0] is _if:
+			if len(x) == 3:
+				x = x + [None]  # (if t c) => (if t c None)
+			require(x, len(x) == 4)
+			return map(expand, x)
+		elif x[0] is _set:
+			require(x, len(x) == 3)
+			var = x[1]                    # (set! non-var exp) => Error
+			require(x, isinstance(var, Symbol), "can set! only a symbol")
+			return [_set, var, expand(x[2])]
+		elif x[0] is _define or x[0] is _definemacro:
+			require(x, len(x) >= 3)
+			_def, v, body = x[0], x[1], x[2:]
+			if isinstance(v, list) and v:    # (define (f args) body)
+				f, args = v[0], v[1:]        # => (define f (lambda (args) body))
+				return expand([_def, f, [_lambda, args]+body])
+			else:
+				require(x, len(x) == 3)        # (define non-var/list exp) => Error
+				require(x, isinstance(v, Symbol), "can define only a symbol")
+				exp = expand(x[2])
+				if _def is _definemacro:
+					require(x, toplevel, "define-macro only allowed at top level")
+					proc = eval(exp)
+					require(x, callable(proc), "macro must be a procedure")
+					macro_table[v] = proc    # (define-macro v proc)
+					return None              # => None; add v:proc to macro_table
+				return [_define, v, exp]
+		elif x[0] is _begin:
+			if len(x) == 1:
+				return None        # (begin) => None
+			else:
+				return [expand(xi, toplevel) for xi in x]
+		elif x[0] is _lambda:                    # (lambda (x) e1 e2)
+			require(x, len(x) >= 3)              # => (lambda (x) (begin e1 e2))
+			vars, body = x[1], x[2:]
+			require(x, (isinstance(vars, list) and all(isinstance(v, Symbol) for v in vars))
+					or isinstance(vars, Symbol), "illegal lambda argument list")
+			exp = body[0] if len(body) == 1 else [_begin] + body
+			return [_lambda, vars, expand(exp)]
+		elif x[0] is _quasiquote:                # `x => expand_quasiquote(x)
+			require(x, len(x) == 2)
+			return expand_quasiquote(x[1])
+		elif isinstance(x[0], Symbol) and x[0] in macro_table:
+			return expand(macro_table[x[0]](*x[1:]), toplevel)  # (m arg...)
+		else:                                    # => macroexpand if m isa macro
+			return map(expand, x)                # (f arg...) => expand each
+		*/
+		
 	}
 
 	/** Tokenizer regex */

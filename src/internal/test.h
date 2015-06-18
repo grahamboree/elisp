@@ -1,6 +1,10 @@
-/*
- * Unit tests for elisp
- */
+//
+//  test.h
+//  Unit Tests for elisp
+//
+//  Created by Graham Pentheny on 12/21/14.
+//  Copyright (c) 2014 Graham Pentheny. All rights reserved.
+//
 
 #pragma once
 
@@ -146,4 +150,371 @@ lispy_tests = [
     ]
 */
 
+    
+    TEST_CASE("prelude/add", "+") {
+        Env testEnv = std::make_shared<Environment>();
+        add_globals(testEnv);
+        Cell result;
+        number_cell* number;
+        auto oneVal = std::make_shared<number_cell>(1.0);
+        
+        // One argument
+        auto oneArg = makeList({oneVal});
+        
+        result = add(oneArg, testEnv);
+        REQUIRE(result->GetType() == kCellType_number);
+        
+        number = static_cast<number_cell*>(result.get());
+        REQUIRE(number->GetValue() == 1);
+        
+        // Two arguments
+        auto twoArgs = makeList({oneVal, oneVal});
+        
+        result = add(twoArgs, testEnv);
+        REQUIRE(result->GetType() == kCellType_number);
+        
+        number = static_cast<number_cell*>(result.get());
+        REQUIRE(number->GetValue() == 2);
+        
+        // Seven arguments
+        shared_ptr<cons_cell> sevenArgs = makeList({
+            oneVal,
+            oneVal,
+            oneVal,
+            oneVal,
+            oneVal,
+            oneVal,
+            oneVal});
+        
+        result = add(sevenArgs, testEnv);
+        REQUIRE(result->GetType() == kCellType_number);
+        
+        number = static_cast<number_cell*>(result.get());
+        REQUIRE(number->GetValue() == 7);
+        
+        // Nested
+        shared_ptr<cons_cell> nested = makeList({
+            oneVal,
+            makeList({
+                std::make_shared<symbol_cell>("+"),
+                oneVal,
+                oneVal})
+        });
+        
+        result = add(nested, testEnv);
+        REQUIRE(result->GetType() == kCellType_number);
+        
+        number = static_cast<number_cell*>(result.get());
+        REQUIRE(number->GetValue() == 3);
+    }
+    TEST_CASE("prelude/sub", "-") {
+        Env testEnv = std::make_shared<Environment>();
+        add_globals(testEnv);
+        auto oneVal = std::make_shared<number_cell>(1.0);
+        
+        // One argument
+        auto result = sub(makeList({oneVal}), testEnv);
+        REQUIRE(result->GetType() == kCellType_number);
+        
+        auto number = std::static_pointer_cast<number_cell>(result);
+        REQUIRE(number->GetValue() == -1);
+        
+        // Two arguments
+        result = sub(makeList({oneVal, oneVal}), testEnv);
+        REQUIRE(result->GetType() == kCellType_number);
+        
+        number = std::static_pointer_cast<number_cell>(result);
+        REQUIRE(number->GetValue() == 0);
+        
+        // Seven arguments
+        result = sub(makeList({
+            std::make_shared<number_cell>(10.0),
+            oneVal,
+            oneVal,
+            oneVal,
+            oneVal,
+            oneVal,
+            oneVal}), testEnv);
+        REQUIRE(result->GetType() == kCellType_number);
+        
+        number = std::static_pointer_cast<number_cell>(result);
+        REQUIRE(number->GetValue() == 4);
+        
+        // Nested
+        shared_ptr<cons_cell> nested = makeList({
+            std::make_shared<number_cell>(5.0),
+            makeList({
+                std::make_shared<symbol_cell>("-"),
+                std::make_shared<number_cell>(2.0),
+                oneVal}),
+            oneVal});
+        
+        result = sub(nested, testEnv);
+        REQUIRE(result->GetType() == kCellType_number);
+        
+        number = std::static_pointer_cast<number_cell>(result);
+        REQUIRE(number->GetValue() == 3);
+    }
+    TEST_CASE("prelude/mult", "*") {
+        Env testEnv = std::make_shared<Environment>();
+        add_globals(testEnv);
+        
+        // Two arguments
+        auto result = mult(makeList({
+            std::make_shared<number_cell>(1.0),
+            std::make_shared<number_cell>(2.0)}), testEnv);
+        REQUIRE(result->GetType() == kCellType_number);
+        
+        auto number = std::static_pointer_cast<number_cell>(result);
+        REQUIRE(number->GetValue() == 2);
+        
+        // Seven arguments
+        result = mult(makeList({
+            std::make_shared<number_cell>(10.0),
+            std::make_shared<number_cell>(2.0),
+            std::make_shared<number_cell>(1.0),
+            std::make_shared<number_cell>(-1.0),
+            std::make_shared<number_cell>(0.5),
+            std::make_shared<number_cell>(10.0),
+            std::make_shared<number_cell>(-5.0)}), testEnv);
+        REQUIRE(result->GetType() == kCellType_number);
+        
+        number = std::static_pointer_cast<number_cell>(result);
+        REQUIRE(number->GetValue() == 500);
+        
+        // Nested
+        result = mult(makeList({
+            std::make_shared<number_cell>(2.0),
+            makeList({
+                std::make_shared<symbol_cell>("*"),
+                std::make_shared<number_cell>(2.0),
+                std::make_shared<number_cell>(3.0)}),
+            std::make_shared<number_cell>(2.0)}), testEnv);
+        REQUIRE(result->GetType() == kCellType_number);
+        
+        number = std::static_pointer_cast<number_cell>(result);
+        REQUIRE(number->GetValue() == 24);
+    }
+    TEST_CASE("prelude/div", "/") {
+        Env testEnv = std::make_shared<Environment>();
+        add_globals(testEnv);
+        
+        // One argument
+        auto result = div(makeList({std::make_shared<number_cell>(2.0)}), testEnv);
+        REQUIRE(result->GetType() == kCellType_number);
+        
+        auto number = std::static_pointer_cast<number_cell>(result);
+        REQUIRE(number->GetValue() == 0.5);
+        
+        // Two arguments
+        result = div(makeList({
+            std::make_shared<number_cell>(4.0),
+            std::make_shared<number_cell>(2.0)}), testEnv);
+        REQUIRE(result->GetType() == kCellType_number);
+        
+        number = std::static_pointer_cast<number_cell>(result);
+        REQUIRE(number->GetValue() == 2);
+        
+        // Seven arguments
+        result = div(makeList({
+            std::make_shared<number_cell>(10.0),
+            std::make_shared<number_cell>(2.0),
+            std::make_shared<number_cell>(2.5)}), testEnv);
+        REQUIRE(result->GetType() == kCellType_number);
+        
+        number = std::static_pointer_cast<number_cell>(result);
+        REQUIRE(number->GetValue() == 2);
+        
+        // Nested
+        result = div(makeList({
+            std::make_shared<number_cell>(4.0),
+            makeList({
+                std::make_shared<symbol_cell>("/"),
+                std::make_shared<number_cell>(2.0),
+                std::make_shared<number_cell>(1.0)}),
+            std::make_shared<number_cell>(2.0)}), testEnv);
+        REQUIRE(result->GetType() == kCellType_number);
+        
+        number = std::static_pointer_cast<number_cell>(result);
+        REQUIRE(number->GetValue() == 1);
+    }
+    TEST_CASE("prelude/eq", "=") {
+        Env testEnv = std::make_shared<Environment>();
+        add_globals(testEnv);
+        
+        // Two arguments
+        auto result = eq(makeList({
+            std::make_shared<number_cell>(2.0),
+            std::make_shared<number_cell>(2.0)}), testEnv);
+        REQUIRE(result->GetType() == kCellType_bool);
+        REQUIRE(cell_to_bool(result));
+        
+        // Seven arguments
+        result = eq(makeList({
+            std::make_shared<number_cell>(-0.0),
+            std::make_shared<number_cell>(0.0),
+            std::make_shared<number_cell>(0.0)}), testEnv);
+        REQUIRE(result->GetType() == kCellType_bool);
+        REQUIRE(cell_to_bool(result));
+        
+        // Nested
+        result = eq(makeList({
+            std::make_shared<number_cell>(4.0),
+            makeList({
+                std::make_shared<symbol_cell>("*"),
+                std::make_shared<number_cell>(2.0),
+                std::make_shared<number_cell>(2.0)})}), testEnv);
+        REQUIRE(result->GetType() == kCellType_bool);
+        REQUIRE(cell_to_bool(result));
+    }
+    TEST_CASE("prelude/if", "if") {
+        Env testEnv = std::make_shared<Environment>();
+        add_globals(testEnv);
+        
+        // Equal
+        auto result = if_then_else(makeList({
+            makeList({
+                std::make_shared<symbol_cell>("="),
+                std::make_shared<number_cell>(1.0),
+                std::make_shared<number_cell>(1.0)}),
+            std::make_shared<number_cell>(1.0),
+            std::make_shared<number_cell>(2.0)}), testEnv);
+        REQUIRE(result->GetType() == kCellType_number);
+        auto number = std::static_pointer_cast<number_cell>(result);
+        REQUIRE(number->GetValue() == 1.0);
+        
+        // Not Equal
+        result = if_then_else(makeList({
+            makeList({
+                std::make_shared<symbol_cell>("="),
+                std::make_shared<number_cell>(2.0),
+                std::make_shared<number_cell>(1.0)}),
+            std::make_shared<number_cell>(1.0),
+            std::make_shared<number_cell>(2.0)}), testEnv);
+        REQUIRE(result->GetType() == kCellType_number);
+        number = std::static_pointer_cast<number_cell>(result);
+        REQUIRE(number->GetValue() == 2.0);
+        
+        // Constant
+        result = if_then_else(makeList({
+            std::make_shared<bool_cell>(false),
+            std::make_shared<number_cell>(1.0),
+            std::make_shared<number_cell>(2.0)}), testEnv);
+        REQUIRE(result->GetType() == kCellType_number);
+        number = std::static_pointer_cast<number_cell>(result);
+        REQUIRE(number->GetValue() == 2.0);
+        
+        // Empty list
+        result = if_then_else(makeList({
+            std::make_shared<bool_cell>(empty_list),
+            std::make_shared<number_cell>(1.0),
+            std::make_shared<number_cell>(2.0)}), testEnv);
+        REQUIRE(result->GetType() == kCellType_number);
+        number = std::static_pointer_cast<number_cell>(result);
+        REQUIRE(number->GetValue() == 2.0);
+    }
+    TEST_CASE("prelude/quote", "quote") {
+        Env testEnv = std::make_shared<Environment>();
+        add_globals(testEnv);
+        
+        Cell result = quote(makeList({makeList({
+            std::make_shared<symbol_cell>("="),
+            std::make_shared<number_cell>(1.0),
+            std::make_shared<number_cell>(2.0)})}), testEnv);
+        REQUIRE(result->GetType() == kCellType_cons);
+        auto cons = std::static_pointer_cast<cons_cell>(result);
+        auto it = cons->begin();
+        
+        REQUIRE((*it)->GetType() == kCellType_symbol);
+        auto equalSymbol = std::static_pointer_cast<symbol_cell>(*it);
+        REQUIRE(equalSymbol->GetIdentifier() == "=");
+        
+        ++it;
+        REQUIRE((*it)->GetType() == kCellType_number);
+        auto numberSymbol = std::static_pointer_cast<number_cell>(*it);
+        REQUIRE(numberSymbol->GetValue() == 1.0);
+        
+        ++it;
+        REQUIRE((*it)->GetType() == kCellType_number);
+        numberSymbol = std::static_pointer_cast<number_cell>(*it);
+        REQUIRE(numberSymbol->GetValue() == 2.0);
+        
+        ++it;
+        REQUIRE(it == cons->end());
+    }
+    TEST_CASE("prelude/set!", "set!") {
+        Env testEnv = std::make_shared<Environment>();
+        add_globals(testEnv);
+        testEnv->mSymbolMap["derp"] = std::make_shared<number_cell>(1.0);
+        
+        set(makeList({
+            std::make_shared<symbol_cell>("derp"),
+            std::make_shared<number_cell>(2.0)}), testEnv);
+        REQUIRE(testEnv->find("derp") == testEnv);
+        auto derpCell = testEnv->get("derp");
+        REQUIRE(derpCell->GetType() == kCellType_number);
+        auto num = std::static_pointer_cast<number_cell>(derpCell);
+        REQUIRE(num->GetValue() == 2);
+    }
+    TEST_CASE("prelude/define", "define") {
+        Env testEnv = std::make_shared<Environment>();
+        add_globals(testEnv);
+        
+        define(makeList({
+            std::make_shared<symbol_cell>("derp"),
+            std::make_shared<number_cell>(2.0)}), testEnv);
+        REQUIRE(testEnv->find("derp") == testEnv);
+        auto derpCell = testEnv->get("derp");
+        REQUIRE(derpCell->GetType() == kCellType_number);
+        auto num = std::static_pointer_cast<number_cell>(derpCell);
+        REQUIRE(num->GetValue() == 2);
+    }
+    TEST_CASE("prelude/cons", "cons") {
+        Env testEnv = std::make_shared<Environment>();
+        add_globals(testEnv);
+        testEnv->mSymbolMap["derp"] = std::make_shared<number_cell>(1.0);
+        
+        Cell result = cons(makeList({std::make_shared<number_cell>(1.0), std::make_shared<number_cell>(2.0)}), testEnv);
+        
+        REQUIRE(result);
+        REQUIRE(result->GetType() == kCellType_cons);
+        
+        auto consCell = std::static_pointer_cast<cons_cell>(result);
+        
+        REQUIRE(consCell->GetCar());
+        REQUIRE(consCell->GetCar()->GetType() == kCellType_number);
+        auto num = std::static_pointer_cast<number_cell>(consCell->GetCar());
+        REQUIRE(num->GetValue() == 1.0);
+        
+        REQUIRE(consCell->GetCdr());
+        REQUIRE(consCell->GetCdr()->GetType() == kCellType_number);
+        num = std::static_pointer_cast<number_cell>(consCell->GetCdr());
+        REQUIRE(num->GetValue() == 2.0);
+    }
+    TEST_CASE("prelude/car", "car") {
+        Env testEnv = std::make_shared<Environment>();
+        add_globals(testEnv);
+        testEnv->mSymbolMap["derp"] = std::make_shared<number_cell>(1.0);
+        
+        auto expr = Program::read("(cons 1 2)");
+        auto result = car(makeList({expr}), testEnv);
+        
+        REQUIRE(result);
+        REQUIRE(result->GetType() == kCellType_number);
+        auto num = std::static_pointer_cast<number_cell>(result);
+        REQUIRE(num->GetValue() == 1.0);
+    }
+    TEST_CASE("prelude/cdr", "cdr") {
+        Env testEnv = std::make_shared<Environment>();
+        add_globals(testEnv);
+        testEnv->mSymbolMap["derp"] = std::make_shared<number_cell>(1.0);
+        
+        auto expr = Program::read("(cons 1 2)");
+        auto result = cdr(makeList({expr}), testEnv);
+        
+        REQUIRE(result);
+        REQUIRE(result->GetType() == kCellType_number);
+        auto num = std::static_pointer_cast<number_cell>(result);
+        REQUIRE(num->GetValue() == 2.0);
+    }
 }

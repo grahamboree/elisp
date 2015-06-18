@@ -1,6 +1,10 @@
-/*
- *
- */
+//
+//  main.cpp
+//  Elisp repl or test runner.
+//
+//  Created by Graham Pentheny on 12/21/14.
+//  Copyright (c) 2014 Graham Pentheny. All rights reserved.
+//
 
 #ifdef ELISP_TEST
 
@@ -18,6 +22,7 @@ using namespace std;
 // If given a file argument, runs the file,
 // otherwise it just runs the repl
 int main(int argc, char *argv[]) {
+    /*
 	Program p;
 	if (argc > 1) {
 		// File(s) were specified, so run those
@@ -26,7 +31,7 @@ int main(int argc, char *argv[]) {
 		p.runCode(stream);
 	} else {
 		p.repl();
-	}
+	}*/
 	return 0;
 }
 
